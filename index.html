@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Owner Dashboard — Sai Bhavani Kirana Stores</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=400;500;600;700&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Plus Jakarta Sans', sans-serif; } </style>
+</head>
+<body class="bg-slate-50 min-h-screen antialiased text-slate-800">
+
+<nav class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm backdrop-blur-md bg-white/90">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16 items-center">
+            <div class="flex items-center space-x-3">
+                <span class="text-2xl">🏪</span>
+                <div>
+                    <h1 class="text-base font-bold text-slate-900 tracking-tight">Sai Bhavani Kirana General Stores</h1>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Owner Console Hub (యజమాని డాష్‌బోర్డ్)</p>
+                </div>
+            </div>
+            <button onclick="fetchAllLiveOrders()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-xs transition-all active:scale-95">
+                🔄 Refresh Grid
+            </button>
+        </div>
+    </div>
+</nav>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h2 class="text-lg font-bold text-slate-900 tracking-tight">Live Active Pipeline</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Pending items sit up top grouped chronologically.</p>
+        </div>
+        <div class="flex gap-3">
+            <span id="pendingTally" class="bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1">0 Pending</span>
+            <span id="completedTally" class="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1">0 Processed</span>
+        </div>
+    </div>
+
+    <div id="ordersMasterGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="col-span-full py-12 text-center text-slate-400 text-sm font-medium bg-white border border-dashed rounded-3xl">
+            Connecting to system storage modules...
+        </div>
+    </div>
+</main>
+
+<script>
+    const CORE_API = "https://sai-bhavani-stores.onrender.com/api";
+
+    async function fetchAllLiveOrders() {
+        const grid = document.getElementById('ordersMasterGrid');
+        try {
+            const response = await fetch(`${CORE_API}/admin/orders`);
+            const orders = await response.json();
+
+            const pendingCount = orders.filter(o => o.status === 'Pending').length;
+            const doneCount = orders.filter(o => o.status === 'Done').length;
+            document.getElementById('pendingTally').innerText = `${pendingCount} Pending Pricing`;
+            document.getElementById('completedTally').innerText = `${doneCount} Processed Handled`;
+
+            if(!orders || orders.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-16 text-center bg-white rounded-3xl border border-dashed text-slate-400 text-sm">No incoming records found.</div>`;
+                return;
+            }
+
+            grid.innerHTML = '';
+
+            orders.forEach(order => {
+                const isDone = order.status === 'Done';
+                let itemsHtml = '';
+
+                order.items.forEach(item => {
+                    let helper = (item.unit==='gram'||item.unit==='gms'||item.unit==='ml'||item.unit==='mls') ? ' <span class="text-emerald-600 font-bold text-[9px]">(Enter KG/Ltr Rate)</span>' : '';
+                    itemsHtml += `
+                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
+                            <div class="text-xs font-semibold text-slate-800">
+                                📦 ${item.productName} <span class="bg-white px-1.5 py-0.5 rounded border font-bold text-[10px] text-slate-500">${item.quantity} ${item.unit}</span>${helper}
+                            </div>
+                            <div class="w-24 relative flex items-center">
+                                <span class="absolute left-2 text-slate-400 text-xs">Rs.</span>
+                                <input type="number" step="any" placeholder="0.00"
+                                       data-order-id="${order._id}" data-item-name="${item.productName}" data-qty="${item.quantity}" data-unit="${item.unit.toLowerCase().trim()}"
+                                       value="${isDone ? item.price : ''}" ${isDone ? 'disabled' : `oninput="calculateLiveCardTotal('${order._id}')"`}
+                                       class="w-full pl-7 pr-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-right disabled:bg-slate-100">
+                            </div>
+                        </div>
+                    `;
+                });
+
+                grid.insertAdjacentHTML('beforeend', `
+                    <div class="bg-white rounded-3xl border border-slate-200 p-5 flex flex-col gap-4 relative shadow-xs" id="card_${order._id}">
+                        <button onclick="deleteOrderRecord('${order._id}')" class="absolute top-4 right-4 text-slate-300 hover:text-red-500">🗑️</button>
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-900">${order.customer.name}</h3>
+                            <p class="text-xs text-slate-500">📞 ${order.customer.phone}</p>
+                        </div>
+                        <div class="space-y-2 flex-1">${itemsHtml}</div>
+                        <div class="bg-slate-50 p-3 rounded-xl border flex justify-between items-center">
+                            <span class="text-xs font-bold text-slate-600">Total Bill:</span>
+                            <span class="text-sm font-black text-slate-900" id="totalLabel_${order._id}">Rs. ${order.totalAmount.toFixed(2)}</span>
+                        </div>
+                        ${isDone ? `
+                            <div class="flex gap-2">
+                                <button onclick="updatePaymentState('${order._id}', 'Unpaid')" class="flex-1 py-1.5 text-xs font-bold rounded-lg ${order.paymentStatus === 'Unpaid' ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-600'}">🔴 Unpaid</button>
+                                <button onclick="updatePaymentState('${order._id}', 'Paid')" class="flex-1 py-1.5 text-xs font-bold rounded-lg ${order.paymentStatus === 'Paid' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'}">🟢 Paid</button>
+                            </div>
+                        ` : `
+                            <button onclick="commitOrderPricing('${order._id}')" id="btn_${order._id}" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2 rounded-xl text-xs">Compile & Send Invoice</button>
+                        `}
+                    </div>
+                `);
+            });
+        } catch(e) { grid.innerHTML = `<div class="col-span-full p-4 bg-red-50 text-red-600 text-center rounded-xl">API Gateway Offline. Check backend.</div>`; }
+    }
+
+    function calculateLiveCardTotal(orderId) {
+        let total = 0;
+        document.querySelectorAll(`input[data-order-id="${orderId}"]`).forEach(input => {
+            const rate = parseFloat(input.value) || 0;
+            const qty = parseFloat(input.getAttribute('data-qty')) || 0;
+            const unit = input.getAttribute('data-unit');
+            if (unit === 'gram' || unit === 'gms' || unit === 'ml' || unit === 'mls') total += (qty / 1000) * rate;
+            else total += qty * rate;
+        });
+        document.getElementById(`totalLabel_${orderId}`).innerText = `Rs. ${total.toFixed(2)}`;
+    }
+
+    async function commitOrderPricing(orderId) {
+        const itemPrices = {};
+        let missing = false;
+        document.querySelectorAll(`input[data-order-id="${orderId}"]`).forEach(input => {
+            if(!input.value.trim()) missing = true;
+            else itemPrices[input.getAttribute('data-item-name')] = parseFloat(input.value);
+        });
+        if(missing) { alert("Please complete all pricing configurations!"); return; }
+
+        const btn = document.getElementById(`btn_${orderId}`);
+        btn.disabled = true; btn.innerText = "Transmitting Invoice...";
+
+        try {
+            const res = await fetch(`${CORE_API}/admin/orders/${orderId}/finalize`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ itemPrices })
+            });
+            if((await res.json()).success) { alert("Dispatched over WhatsApp!"); fetchAllLiveOrders(); }
+        } catch(e) { alert("Error connecting to live environment server."); btn.disabled = false; }
+    }
+
+    async function updatePaymentState(orderId, nextState) {
+        await fetch(`${CORE_API}/admin/orders/${orderId}/payment`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentStatus: nextState })
+        });
+        fetchAllLiveOrders();
+    }
+
+    async function deleteOrderRecord(orderId) {
+        if(confirm("Permanently drop this checkout entry?")) {
+            await fetch(`${CORE_API}/admin/orders/${orderId}`, { method: 'DELETE' });
+            fetchAllLiveOrders();
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', fetchAllLiveOrders);
+</script>
+</body>
+</html>

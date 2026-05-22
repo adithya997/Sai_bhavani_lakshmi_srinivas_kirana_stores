@@ -3,254 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sai Bhavani Kirana Genral Stores (Battani shop)</title>
+    <title>Place Order — Sai Bhavani Stores</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-slide-in { animation: slideIn 0.3s ease-out forwards; }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Plus Jakarta Sans', sans-serif; } </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen antialiased flex flex-col">
+<body class="bg-slate-50 min-h-screen text-slate-800 py-10 px-4">
 
-<header class="bg-gradient-to-r from-emerald-600 to-teal-700 text-white px-6 py-5 shadow-sm shrink-0">
-    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-        <div class="flex items-center space-x-3">
-            <span class="text-2xl bg-white/10 p-2 rounded-xl backdrop-blur-sm">🏪</span>
+<div class="max-w-xl mx-auto bg-white border border-slate-200 rounded-3xl shadow-xs p-6 md:p-8">
+    <div class="text-center mb-8">
+        <span class="text-4xl">🛒</span>
+        <h1 class="text-xl font-bold text-slate-900 mt-2">Sai Bhavani Kirana General Stores</h1>
+        <p class="text-xs text-slate-400 mt-1">Submit your order details below (కిరాణా వస్తువుల ఆర్డర్ ఫారమ్)</p>
+    </div>
+
+    <form id="orderSubmissionForm" class="space-y-6" onsubmit="transmitCustomerForm(event)">
+        <div class="space-y-4">
             <div>
-                <h1 class="text-xl font-bold tracking-tight">Sai Bhavani Kirana Genral Stores (Battani shop)</h1>
-                <p class="text-emerald-100/90 text-xs font-medium">సాయి భవానీ కిరాణా జనరల్ స్టోర్స్ (బఠాణీ షాప్)</p>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Your Name (మీ పేరు)</label>
+                <input type="text" id="custName" required placeholder="Enter complete name" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-emerald-500">
             </div>
-        </div>
-        <div class="bg-white/10 p-2.5 rounded-xl backdrop-blur-sm text-xs space-y-0.5 border border-white/5">
-            <div class="font-bold text-emerald-200 uppercase tracking-wider text-[10px]">For Queries / సహాయం కోసం:</div>
-            <div>📞 Srinivas (శ్రీనివాస్): <span class="font-bold">9154699599</span></div>
-            <div>📞 Tarun (తరుణ్): <span class="font-bold">8885208886</span></div>
-        </div>
-    </div>
-</header>
-
-<form id="orderForm" class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col lg:flex-row gap-6 relative pb-24 lg:pb-8">
-
-    <div class="w-full lg:w-[35%] space-y-4 shrink-0">
-        <div class="bg-white rounded-3xl p-6 border border-slate-200/60 shadow-xs space-y-4">
-            <div class="flex items-center space-x-2 border-b border-slate-100 pb-2.5">
-                <span class="text-lg">👤</span>
-                <h2 class="text-xs font-bold text-slate-700 tracking-wide uppercase">Your Details / మీ వివరాలు</h2>
-            </div>
-
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">Full Name * (పూర్తి పేరు *)</label>
-                    <input type="text" id="custName" required placeholder="Rahul Sharma"
-                           class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white text-sm transition-all font-medium">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">Mobile Number * (మొబైల్ నంబర్ *)</label>
-                    <input type="tel" id="custPhone" required placeholder="9849075576"
-                           class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white text-sm transition-all font-medium">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">Address (చిరునామా) <span class="text-slate-400 font-normal text-[10px]">(Optional / ఐచ్ఛికం)</span></label>
-                    <textarea id="custAddress" rows="2" placeholder="Leave blank if picking up at shop counter"
-                              class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white text-sm transition-all resize-none font-medium"></textarea>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">General Notes (ఇతర సూచనలు) <span class="text-slate-400 font-normal text-[10px]">(Optional / ఐచ్ఛికం)</span></label>
-                    <input type="text" id="custNotes" placeholder="e.g., Deliver quickly"
-                           class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white text-sm transition-all font-medium">
-                </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">WhatsApp Number (వాట్సాప్ నంబర్)</label>
+                <input type="tel" id="custPhone" required placeholder="e.g. 9876543210" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-emerald-500">
             </div>
         </div>
 
-        <div class="bg-slate-900 text-white p-5 rounded-3xl shadow-sm text-xs leading-relaxed space-y-2">
-            <div class="font-bold text-emerald-400 uppercase tracking-wide">💡 How to use Item Comments / కామెంట్ బాక్స్ ఉపయోగించే విధానం:</div>
-            <p class="text-slate-300">
-                Use the comment box under each item to specify brands, specific types, or preferences. For example:
-                <span class="text-white italic bg-white/10 px-1 rounded">"Aashirvaad Brand Only"</span> or
-                <span class="text-white italic bg-white/10 px-1 rounded">"Require Red Raw Tomatoes"</span>.
-            </p>
-            <p class="text-slate-400 border-t border-white/10 pt-2">
-                మీకు కావలసిన బ్రాండ్ లేదా రకాన్ని ప్రతి వస్తువు కింద ఉన్న కామెంట్ బాక్స్ లో తెలియజేయవచ్చు (ఉదాహరణకు: ఆశీర్వాద్ బ్రాండ్ మాత్రమే కావాలి).
-            </p>
-        </div>
-    </div>
+        <hr class="border-slate-100">
 
-    <div class="w-full lg:w-[65%] flex flex-col bg-white rounded-3xl border border-slate-200/60 shadow-xs overflow-hidden">
-        <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
-            <div class="flex items-center space-x-2">
-                <span class="text-xl">🌾</span>
-                <div>
-                    <h2 class="text-sm font-bold text-slate-700 tracking-wide uppercase">Your Items Basket / మీ వస్తువుల జాబితా</h2>
-                </div>
+        <div>
+            <div class="flex justify-between items-center mb-3">
+                <label class="text-xs font-bold text-slate-700 uppercase">Items To Buy (కొనుగోలు వస్తువులు)</label>
+                <button type="button" onclick="insertItemRow()" class="text-xs font-bold text-emerald-600 hover:text-emerald-700">+ Add Product</button>
             </div>
-            <button type="button" onclick="addItemRow()"
-                    class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95">
-                <span>+</span> Add Item (వస్తువును జోడించు)
-            </button>
+            <div id="itemsContainer" class="space-y-3"></div>
         </div>
 
-        <div id="itemsContainer" class="p-5 overflow-y-auto space-y-4 min-h-[350px] bg-slate-50/20 flex-1">
-            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3 relative animate-slide-in group">
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <div class="flex-1">
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Item Name / వస్తువు పేరు</label>
-                        <input type="text" placeholder="e.g., Toor Dal, Rice, Milk" required
-                               class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium prod-name focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white transition-all">
-                    </div>
-                    <div class="w-24">
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Qty / పరిమాణం</label>
-                        <input type="number" min="0.01" step="any" value="1" required
-                               class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-center prod-qty focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white transition-all">
-                    </div>
-                    <div class="w-32">
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Unit / ప్రమాణం</label>
-                        <select class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm prod-unit text-slate-600 font-semibold cursor-pointer">
-                            <option value="kg">kg (కిలో)</option>
-                            <option value="gram">gram (గ్రాములు)</option>
-                            <option value="litre">litre (లీటర్)</option>
-                            <option value="ml">ml (మిల్లీలీటర్)</option>
-                            <option value="packet">packet (ప్యాకెట్)</option>
-                            <option value="piece">piece (ముక్క/నగ)</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Item Brand or Type Preference / బ్రాండ్ లేదా రకం వివరణ (Optional)</label>
-                    <input type="text" placeholder="e.g., Freedom oil brand, or Ripe yellow bananas"
-                           class="w-full px-3.5 py-1.5 bg-slate-50/50 border border-slate-200 border-dashed rounded-lg text-xs font-medium prod-comment focus:outline-none focus:border-emerald-500 focus:bg-white transition-all">
-                </div>
-                <button type="button" onclick="removeItemRow(this)"
-                        class="absolute top-2 right-2 text-slate-300 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 transition-all sm:opacity-0 group-hover:opacity-100">
-                    ✕
-                </button>
-            </div>
-        </div>
-
-        <div class="hidden lg:block p-5 border-t border-slate-100 bg-slate-50/50 shrink-0">
-            <button type="submit" id="submitBtnLarge"
-                    class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-4 rounded-xl transition-all shadow-md active:scale-[0.99] tracking-wide text-sm flex items-center justify-center space-x-2">
-                <span>Submit Order to Store Counter (ఆర్డర్ పంపండి)</span>
-            </button>
-        </div>
-</form>
-</div>
-
-<div class="block lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100 shadow-xl z-50">
-    <button type="button" onclick="triggerFormSubmit()" id="submitBtnMobile"
-            class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-xl transition-all text-sm flex items-center justify-center space-x-2">
-        <span>Submit Order (ఆర్డర్ పంపండి)</span>
-    </button>
+        <button type="submit" id="submitFormBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl text-xs tracking-wider uppercase transition-all shadow-md">
+            Submit Order Request
+        </button>
+    </form>
 </div>
 
 <script>
-    function addItemRow() {
+    const TARGET_API = "https://sai-bhavani-stores.onrender.com/api";
+
+    function insertItemRow() {
         const container = document.getElementById('itemsContainer');
-        const rowHtml = `
-                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3 relative animate-slide-in group">
-                    <div class="flex flex-col sm:flex-row gap-3">
-                        <div class="flex-1">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Item Name / వస్తువు పేరు</label>
-                            <input type="text" placeholder="Item Name" required class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium prod-name focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white transition-all">
-                        </div>
-                        <div class="w-24">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Qty / పరిమాణం</label>
-                            <input type="number" min="0.01" step="any" value="1" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-center prod-qty focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white transition-all">
-                        </div>
-                        <div class="w-32">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Unit / प्रमाణం</label>
-                            <select class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm prod-unit text-slate-600 font-semibold cursor-pointer">
-                                <option value="kg">kg (కిలో)</option>
-                                <option value="gram">gram (గ్రాములు)</option>
-                                <option value="litre">litre (లీటర్)</option>
-                                <option value="ml">ml (మిల్లీలీటర్)</option>
-                                <option value="packet">packet (ప్యాకెట్)</option>
-                                <option value="piece">piece (ముక్క/నగ)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Item Brand or Type Preference / బ్రాండ్ లేదా రకం వివరణ (Optional)</label>
-                        <input type="text" placeholder="e.g., Brand preferences or specific instructions" class="w-full px-3.5 py-1.5 bg-slate-50/50 border border-slate-200 border-dashed rounded-lg text-xs font-medium prod-comment focus:outline-none focus:border-emerald-500 focus:bg-white transition-all">
-                    </div>
-                    <button type="button" onclick="removeItemRow(this)" class="absolute top-2 right-2 text-slate-300 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 transition-all">
-                        ✕
-                    </button>
-                </div>
-            `;
-        container.insertAdjacentHTML('beforeend', rowHtml);
-        container.scrollTop = container.scrollHeight;
+        const rowId = Date.now();
+        const itemHtml = `
+            <div class="flex gap-2 items-center bg-slate-50 p-3 rounded-xl border border-slate-100" id="row_${rowId}">
+                <input type="text" placeholder="Item Name (e.g. Sugar, Oil)" required class="flex-1 bg-white border px-3 py-1.5 text-xs rounded-lg focus:outline-emerald-500 product-name">
+                <input type="number" placeholder="Qty" step="any" required class="w-16 bg-white border px-2 py-1.5 text-xs rounded-lg text-center product-qty">
+                <select class="bg-white border px-2 py-1.5 text-xs rounded-lg focus:outline-emerald-500 product-unit">
+                    <option value="kg">KG</option>
+                    <option value="gram">Grams</option>
+                    <option value="liter">Liter</option>
+                    <option value="ml">ML</option>
+                    <option value="packet">Packet</option>
+                    <option value="piece">Piece</option>
+                </select>
+                <button type="button" onclick="document.getElementById('row_${rowId}').remove()" class="text-slate-400 hover:text-red-500 text-xs px-1">❌</button>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', itemHtml);
     }
 
-    function removeItemRow(button) {
-        const rows = document.querySelectorAll('#itemsContainer > div');
-        if(rows.length > 1) {
-            button.closest('.animate-slide-in').remove();
-        } else {
-            alert("Your basket must have at least one grocery item line!");
-        }
-    }
-
-    function triggerFormSubmit() { document.getElementById('orderForm').requestSubmit(); }
-
-    document.getElementById('orderForm').addEventListener('submit', async (e) => {
+    async function transmitCustomerForm(e) {
         e.preventDefault();
-        const btnLarge = document.getElementById('submitBtnLarge');
-        const btnMobile = document.getElementById('submitBtnMobile');
+        const submitBtn = document.getElementById('submitFormBtn');
+        const rows = document.querySelectorAll('#itemsContainer > div');
 
-        btnLarge.disabled = true; btnMobile.disabled = true;
-        btnLarge.innerText = "Processing/పంపుతోంది...";
+        if (rows.length === 0) { alert("Please add at least one item before submitting."); return; }
+
+        const items = [];
+        rows.forEach(row => {
+            items.push({
+                productName: row.querySelector('.product-name').value.trim(),
+                quantity: parseFloat(row.querySelector('.product-qty').value),
+                unit: row.querySelector('.product-unit').value
+            });
+        });
 
         const payload = {
             customer: {
                 name: document.getElementById('custName').value.trim(),
-                phone: document.getElementById('custPhone').value.trim(),
-                address: document.getElementById('custAddress').value.trim(),
-                deliveryInstructions: document.getElementById('custNotes').value.trim()
+                phone: document.getElementById('custPhone').value.trim()
             },
-            items: []
+            items: items
         };
 
-        const cards = document.querySelectorAll('#itemsContainer > div');
-        cards.forEach(card => {
-            const nameInp = card.querySelector('.prod-name');
-            if (nameInp) {
-                payload.items.push({
-                    productName: nameInp.value.trim(),
-                    quantity: parseFloat(card.querySelector('.prod-qty').value) || 1,
-                    unit: card.querySelector('.prod-unit').value,
-                    itemComment: card.querySelector('.prod-comment').value.trim() // Map comment field string
-                });
-            }
-        });
+        submitBtn.disabled = true; submitBtn.innerText = "Transmitting Order Request...";
 
         try {
-            const response = await fetch('https://sai-bhavani-stores.onrender.com/api/orders', {                headers: { 'Content-Type': 'application/json' },
+            const res = await fetch(`${TARGET_API}/orders`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            const result = await response.json();
-            if (result.success) {
-                alert(`🎉 Order Registered with Sai Bhavani Stores!\n\nమీ ఆర్డర్ విజయవంతంగా పంపబడింది.`);
-                document.getElementById('orderForm').reset();
+            if((await res.json()).success) {
+                alert("Order successfully transmitted to shop admin grid! Your bill is compiling.");
+                document.getElementById('orderSubmissionForm').reset();
                 document.getElementById('itemsContainer').innerHTML = '';
-                addItemRow();
-            } else {
-                alert(`Submission Error: ${result.error}`);
+                insertItemRow();
             }
-        } catch (err) {
-            alert('Connection failure to local server engine.');
-        } finally {
-            btnLarge.disabled = false; btnMobile.disabled = false;
-            btnLarge.innerText = "Submit Order to Store Counter (ఆర్డర్ పంపండి)";
-            btnMobile.innerText = "Submit Order (ఆర్డర్ పంపండి)";
-        }
-    });
+        } catch(err) { alert("Connection error. Try again."); }
+        finally { submitBtn.disabled = false; submitBtn.innerText = "Submit Order Request"; }
+    }
+
+    // Spawn an initial item row on startup
+    window.addEventListener('DOMContentLoaded', insertItemRow);
 </script>
 </body>
 </html>
