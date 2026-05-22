@@ -22,27 +22,49 @@ const Order = require('./src/models/Order');
 const OWNER_WHATSAPP_JID = "919154699599@c.us"; // Configured for Srinivas
 
 // 3. INITIALIZE WHATSAPP AUTOMATION INSTANCE WITH WEB PARSING OVERRIDES
-// Optimized with Cloud Environment fallbacks to run seamlessly on Render Linux architectures.
+// Self-resolving multi-path browser engine fallback array to auto-locate chromium binaries.
+const getPuppeteerConfig = () => {
+    const config = {
+        headless: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--no-zygote',
+            '--single-process'
+        ]
+    };
+
+    // Array of fallback production execution paths on standard linux cloud architecture setups
+    const standardLinuxPaths = [
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium',
+        '/opt/render/.cache/puppeteer'
+    ];
+
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+        config.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    } else {
+        for (const binaryPath of standardLinuxPaths) {
+            if (fs.existsSync(binaryPath)) {
+                config.executablePath = binaryPath;
+                console.log(`🎯 Automated targeting engine locked browser pathway directly at: ${binaryPath}`);
+                break;
+            }
+        }
+    }
+    return config;
+};
+
 const whatsappClient = new Client({
     authStrategy: new LocalAuth({ dataPath: path.join(__dirname, '.wwebjs_auth') }),
     webVersionCache: {
         type: 'remote',
         remotePath: 'https://raw.githubusercontent.com/wwebjs/web-versions/main/remote/2.2412.54.html',
     },
-    puppeteer: {
-        headless: true,
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process',
-            '--disable-gpu'
-        ]
-    }
+    puppeteer: getPuppeteerConfig()
 });
 
 let isWhatsAppReady = false;
@@ -60,7 +82,10 @@ whatsappClient.on('ready', () => {
 process.on('uncaughtException', (e) => console.error('⚠️ Caught Exception safely:', e.message));
 process.on('unhandledRejection', (r) => console.error('⚠️ Caught Rejection safely:', r));
 
-whatsappClient.initialize().catch(err => console.error("Initial handshake bypass:", err.message));
+// Delay initialization slightly to let the express network interfaces clear out port channels smoothly
+setTimeout(() => {
+    whatsappClient.initialize().catch(err => console.error("Initial handshake bypass:", err.message));
+}, 5000);
 
 // 4. ROUTE GATEWAY EXPRESS CONFIGURATIONS
 const app = express();
