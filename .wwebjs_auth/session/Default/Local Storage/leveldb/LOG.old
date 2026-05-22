@@ -1,6 +1,0 @@
-2026/05/22-15:49:46.756 6cdc Reusing MANIFEST C:\Users\chenn\dev\green-cart-grocer\.wwebjs_auth\session\Default\Local Storage\leveldb/MANIFEST-000001
-2026/05/22-15:49:46.766 6cdc Recovering log #4
-2026/05/22-15:49:46.772 6cdc Reusing old log C:\Users\chenn\dev\green-cart-grocer\.wwebjs_auth\session\Default\Local Storage\leveldb/000004.log 
-2026/05/22-15:50:46.783 2fec Level-0 table #8: started
-2026/05/22-15:50:46.792 2fec Level-0 table #8: 13988 bytes OK
-2026/05/22-15:50:46.798 2fec Delete type=0 #4
