@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
 const QRCode = require('qrcode');
+const shell = require('shelljs'); // Added for runtime background installations
 require('dotenv').config();
 
 // Native WhatsApp Automation Engine Dependencies
@@ -18,11 +19,33 @@ const qrcodeTerminal = require('qrcode-terminal');
 
 const Order = require('./src/models/Order');
 
-// OWNER PHONE DEFINITION (Used for Requirement #7: Sends raw list and comments directly here)
+// OWNER PHONE DEFINITION
 const OWNER_WHATSAPP_JID = "919154699599@c.us"; // Configured for Srinivas
 
-// 3. INITIALIZE WHATSAPP AUTOMATION INSTANCE WITH WEB PARSING OVERRIDES
-// Self-resolving multi-path browser engine fallback array to auto-locate chromium binaries.
+// 3. RUNTIME SELF-INSTALLATION FOR CHROMIUM BINARIES (Bypasses Render Free Tier Dashboard limits)
+const localCacheDir = '/opt/render/.cache/puppeteer';
+console.log("🔍 Checking environment browser configuration pathways...");
+
+try {
+    // Force runtime installation if the local cache directory does not exist or is empty
+    if (!fs.existsSync(localCacheDir) || fs.readdirSync(localCacheDir).length === 0) {
+        console.log("⚠️ Chromium binaries missing from cloud cache instance layer.");
+        console.log("🛠️ Starting native background browser engine installation process...");
+
+        // Execute the installation directly inside Render's running container environment
+        if (shell.exec('npx puppeteer browsers install chrome').code !== 0) {
+            console.error("❌ Background browser engine installation encountered an error.");
+        } else {
+            console.log("🎯 Chromium engine installation completed successfully!");
+        }
+    } else {
+        console.log("✅ Cached chromium binary asset layers located safely.");
+    }
+} catch (err) {
+    console.error("⚠️ Local runtime file analysis warning:", err.message);
+}
+
+// Multi-path fallback locator map array to automatically grab the browser binary executable file
 const getPuppeteerConfig = () => {
     const config = {
         headless: true,
@@ -36,13 +59,36 @@ const getPuppeteerConfig = () => {
         ]
     };
 
-    // Array of fallback production execution paths on standard linux cloud architecture setups
     const standardLinuxPaths = [
         '/usr/bin/google-chrome-stable',
         '/usr/bin/chromium-browser',
-        '/usr/bin/chromium',
-        '/opt/render/.cache/puppeteer'
+        '/usr/bin/chromium'
     ];
+
+    // Read Render's automatic caching installation structure dynamically
+    try {
+        if (fs.existsSync(localCacheDir)) {
+            const searchForExecutable = (dir) => {
+                const elements = fs.readdirSync(dir);
+                for (const element of elements) {
+                    const fullCombinedPath = path.join(dir, element);
+                    if (fs.statSync(fullCombinedPath).isDirectory()) {
+                        const potentialMatch = searchForExecutable(fullCombinedPath);
+                        if (potentialMatch) return potentialMatch;
+                    } else if (element === 'chrome' || element === 'chromium') {
+                        return fullCombinedPath;
+                    }
+                }
+                return null;
+            };
+            const exactLocatedPath = searchForExecutable(localCacheDir);
+            if (exactLocatedPath) {
+                standardLinuxPaths.unshift(exactLocatedPath);
+            }
+        }
+    } catch (e) {
+        console.log("Could not traverse caching directory assets dynamically:", e.message);
+    }
 
     if (process.env.PUPPETEER_EXECUTABLE_PATH) {
         config.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
@@ -50,7 +96,7 @@ const getPuppeteerConfig = () => {
         for (const binaryPath of standardLinuxPaths) {
             if (fs.existsSync(binaryPath)) {
                 config.executablePath = binaryPath;
-                console.log(`🎯 Automated targeting engine locked browser pathway directly at: ${binaryPath}`);
+                console.log(`🎯 Targeting engine locked browser pathway directly at: ${binaryPath}`);
                 break;
             }
         }
@@ -82,10 +128,10 @@ whatsappClient.on('ready', () => {
 process.on('uncaughtException', (e) => console.error('⚠️ Caught Exception safely:', e.message));
 process.on('unhandledRejection', (r) => console.error('⚠️ Caught Rejection safely:', r));
 
-// Delay initialization slightly to let the express network interfaces clear out port channels smoothly
+// Delay initialization slightly to let the network interfaces clear out port channels smoothly
 setTimeout(() => {
     whatsappClient.initialize().catch(err => console.error("Initial handshake bypass:", err.message));
-}, 5000);
+}, 7000);
 
 // 4. ROUTE GATEWAY EXPRESS CONFIGURATIONS
 const app = express();
@@ -94,7 +140,7 @@ app.use(express.json());
 
 // --- API LAYER IMPLEMENTATION ROUTES ---
 
-// A. CUSTOMER ACTION: Place order and send raw shopping list directly to owner mobile (Requirement #7)
+// A. CUSTOMER ACTION: Place order and send raw shopping list directly to owner mobile
 app.post('/api/orders', async (req, res) => {
     try {
         const { customer, items } = req.body;
@@ -106,7 +152,6 @@ app.post('/api/orders', async (req, res) => {
         await newOrder.save();
         console.log(`📦 New Order Saved in Database: ID ${newOrder._id}`);
 
-        // REQUIREMENT #7: Dispatch incoming notification directly to owner terminal profile phone window
         if (isWhatsAppReady) {
             let itemsTextSummary = `🔔 *New Order Received! (#${newOrder._id.toString().slice(-6)})*\n`;
             itemsTextSummary += `👤 *Customer Name:* ${newOrder.customer.name}\n`;
@@ -131,10 +176,9 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
-// B. ADMIN ACTION: Fetch sorted pipeline records (Requirement #5: Pending on top, Done below)
+// B. ADMIN ACTION: Fetch sorted pipeline records (Pending on top, Done below)
 app.get('/api/admin/orders', async (req, res) => {
     try {
-        // Automatically delete completed payment records older than 24 hours (Requirement #4)
         const past24HoursThreshold = new Date(Date.now() - 24 * 60 * 60 * 1000);
         const deletionReport = await Order.deleteMany({
             status: 'Done',
@@ -142,17 +186,13 @@ app.get('/api/admin/orders', async (req, res) => {
             paidAt: { $lte: past24HoursThreshold }
         });
         if(deletionReport.deletedCount > 0) {
-            console.log(`🧹 Cleaned up ${deletionReport.deletedCount} historical Paid orders from the grid visualization workspace.`);
+            console.log(`🧹 Cleaned up ${deletionReport.deletedCount} historical Paid orders.`);
         }
 
-        // Fetch remaining data sets
         const allRecords = await Order.find({});
-
-        // Custom sort ranking sequence array mapping block
         allRecords.sort((x, y) => {
             if (x.status === 'Pending' && y.status !== 'Pending') return -1;
             if (x.status !== 'Pending' && y.status === 'Pending') return 1;
-            // Secondary ranking criterion: sorting based on incoming chronological timestamps
             return new Date(y.createdAt) - new Date(x.createdAt);
         });
 
@@ -162,14 +202,14 @@ app.get('/api/admin/orders', async (req, res) => {
     }
 });
 
-// C. ADMIN ACTION: Finalize Pricing, Draw Tabular PDF with Per-Unit Costs (Requirements #2, #9, #10)
+// C. ADMIN ACTION: Finalize Pricing, Draw Tabular PDF with Per-Unit Costs
 app.put('/api/admin/orders/:id/finalize', async (req, res) => {
     try {
         const { id } = req.params;
         const { itemPrices } = req.body;
 
         const order = await Order.findById(id);
-        if (!order) return res.status(404).json({ success: false, message: 'Order reference entry missing' });
+        if (!order) return res.status(444).json({ success: false, message: 'Order reference entry missing' });
 
         let grandSum = 0;
         order.items.forEach(item => {
@@ -191,7 +231,6 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         order.status = 'Done';
         await order.save();
 
-        // UPI Matrix Payload Generation
         const storeUPI = "9154699599@ybl";
         const titleString = encodeURIComponent("Sai Bhavani Kirana Stores");
         const upiURI = `upi://pay?pa=${storeUPI}&pn=${titleString}&am=${order.totalAmount}&cu=INR`;
@@ -199,14 +238,12 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         const qrImgPath = path.join(__dirname, `qr_temp_${order._id}.png`);
         await QRCode.toFile(qrImgPath, upiURI, { width: 140, margin: 1 });
 
-        // PDF Generation (Requirement #10: Clean Tabular Matrix Layout)
         const doc = new PDFDocument({ margin: 40 });
         const pdfName = `Invoice_Receipt_${order._id}.pdf`;
         const localPdfFilePath = path.join(__dirname, pdfName);
         const writeStream = fs.createWriteStream(localPdfFilePath);
         doc.pipe(writeStream);
 
-        // Header Title Graphics (Requirement #1)
         doc.fillColor('#047857').fontSize(18).text('SAI BHAVANI KIRANA GENRAL STORES', { align: 'center', bold: true });
         doc.fillColor('#475569').fontSize(11).text('(Battani shop)', { align: 'center' }).moveDown(1.5);
 
@@ -216,11 +253,9 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         doc.text(`Mobile Contact: ${order.customer.phone}`);
         doc.text(`Timestamp: ${new Date().toLocaleString()}`).moveDown(1.5);
 
-        // TABLE RENDER STRUCTURE (Requirement #10 Layout Engine)
         const tableTopOffset = doc.y;
         doc.font('Helvetica-Bold').fillColor('#ffffff');
 
-        // Draw Header Colored Ribbon Back-Box Row Strip
         doc.rect(40, tableTopOffset, 530, 20).fill('#047857');
         doc.fillColor('#ffffff');
         doc.text('Particular Item Description', 45, tableTopOffset + 6);
@@ -232,7 +267,6 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         doc.font('Helvetica').fillColor('#334155');
 
         order.items.forEach((item, index) => {
-            // Alternating shaded background tracks for clean text contrast
             if (index % 2 === 1) {
                 doc.rect(40, ongoingYOffset, 530, 20).fill('#f8fafc');
             }
@@ -240,7 +274,6 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
             doc.text(item.productName, 45, ongoingYOffset + 6);
             doc.text(`${item.quantity} ${item.unit}`, 240, ongoingYOffset + 6);
 
-            // Format rates based on conversion definitions (Requirement #2 & Fix #9)
             let rawRateLabel = `Rs. ${item.price.toFixed(2)}`;
             if(item.unit === 'gram' || item.unit === 'gms') rawRateLabel = `Rs. ${item.price.toFixed(2)} /kg`;
             if(item.unit === 'ml' || item.unit === 'mls') rawRateLabel = `Rs. ${item.price.toFixed(2)} /ltr`;
@@ -250,16 +283,14 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
 
             ongoingYOffset += 20;
 
-            // Render sub-line if an inline option comment was written
             if(item.itemComment) {
                 doc.rect(40, ongoingYOffset, 530, 14).fill('#f0f9ff');
                 doc.fillColor('#0369a1').fontSize(8).text(`  ↳ Spec option: "${item.itemComment}"`, 45, ongoingYOffset + 3);
                 ongoingYOffset += 14;
-                doc.fontSize(9); // Reset font size
+                doc.fontSize(9);
             }
         });
 
-        // Total Section Block Row Strip Calculation Rendering
         ongoingYOffset += 10;
         doc.rect(40, ongoingYOffset, 530, 2).fill('#e2e8f0');
         ongoingYOffset += 8;
@@ -267,7 +298,6 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         doc.text('Final Settled Bill Amount Value:', 280, ongoingYOffset);
         doc.text(`Rs. ${order.totalAmount.toFixed(2)}`, 480, ongoingYOffset, { width: 80, align: 'right' });
 
-        // Embed Custom UPI Verification code matrix
         if (fs.existsSync(qrImgPath)) {
             doc.moveDown(2);
             doc.fontSize(8).fillColor('#64748b').text('Scan QR Code via PhonePe/GPay/BHIM to pay:', { align: 'center' }).moveDown(0.5);
@@ -276,7 +306,6 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
 
         doc.end();
 
-        // WHATSAPP AUTOMATION FILE DELIVERY DISPATCH TRIGGER HOOK
         writeStream.on('finish', () => {
             try { if (fs.existsSync(qrImgPath)) fs.unlinkSync(qrImgPath); } catch(err) {}
 
@@ -284,10 +313,10 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
             if (refinedPhone.startsWith('91') && refinedPhone.length > 10) refinedPhone = refinedPhone.substring(2);
             const targetsJID = `91${refinedPhone}@c.us`;
 
-            const welcomeNotificationBody = `Hello ${order.customer.name},\n\nYour grocery list from *Sai Bhavani Kirana Genral Stores (Battani shop)* has been compiled! 🛍️\n\n💰 *Total Amount:* Rs. ${order.totalAmount.toFixed(2)}\n\nYour clean tabular tax invoice document file is attached right underneath. Thank you for your business!`;
+            const welcomeNotificationBody = `Hello ${order.customer.name},\n\nYour grocery list from *Sai Bhavani Kirana Genral Stores (Battani shop)* has been compiled! 🛍️\n\n💰 *Total Amount:* Rs. ${order.totalAmount.toFixed(2)}\n\nYour invoice document file is attached below. Thank you!`;
 
             setTimeout(async () => {
-                if (!isWhatsAppReady) return console.error("WhatsApp transport link currently down.");
+                if (!isWhatsAppReady) return console.error("WhatsApp transport link down.");
                 try {
                     await whatsappClient.sendMessage(targetsJID, welcomeNotificationBody);
                     if (fs.existsSync(localPdfFilePath)) {
@@ -304,7 +333,7 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
     } catch(err) { return res.status(500).json({ success: false, error: err.message }); }
 });
 
-// D. ADMIN ACTION: Toggle Unpaid/Paid status and log timestamp (Requirement #4)
+// D. ADMIN ACTION: Toggle Unpaid/Paid status and log timestamp
 app.patch('/api/admin/orders/:id/payment', async (req, res) => {
     try {
         const { id } = req.params;
@@ -317,7 +346,7 @@ app.patch('/api/admin/orders/:id/payment', async (req, res) => {
     } catch(err) { return res.status(500).json({ success: false, error: err.message }); }
 });
 
-// E. ADMIN ACTION: Delete an individual order card (Requirement #3)
+// E. ADMIN ACTION: Delete an individual order card
 app.delete('/api/admin/orders/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -328,7 +357,7 @@ app.delete('/api/admin/orders/:id', async (req, res) => {
 
 app.get('/', (req, res) => res.send('Sai Bhavani Engine Operating Normally.'));
 
-const SERVER_PORT = process.env.PORT || 5000;
+const SERVER_PORT = process.env.PORT || 10000;
 mongoose.connect(process.env.MONGODB_URI).then(() => {
     app.listen(SERVER_PORT, () => console.log(`Server Core Port: ${SERVER_PORT}`));
 });
