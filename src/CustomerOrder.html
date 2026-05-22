@@ -231,8 +231,7 @@
         });
 
         try {
-            const response = await fetch('https://sai-bhavani-backend.onrender.com/api/orders', {                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+            const response = await fetch('https://sai-bhavani-stores.onrender.com/api/orders', {                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
             const result = await response.json();
