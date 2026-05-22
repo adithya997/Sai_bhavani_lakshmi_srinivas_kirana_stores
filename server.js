@@ -1,8 +1,12 @@
+// ====================================================================
 // 1. FORCED DNS OVERRIDE FOR WINDOWS NODE.JS RESOLUTION REGRESSION
+// ====================================================================
 const dns = require('node:dns');
 dns.setServers(['1.1.1.1', '8.8.8.8']);
 
+// ====================================================================
 // 2. DEPENDENCIES & PROJECT PACKAGE IMPORTS
+// ====================================================================
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -10,7 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
 const QRCode = require('qrcode');
-const shell = require('shelljs'); // Added for runtime background installations
+const shell = require('shelljs');
 require('dotenv').config();
 
 // Native WhatsApp Automation Engine Dependencies
@@ -19,20 +23,20 @@ const qrcodeTerminal = require('qrcode-terminal');
 
 const Order = require('./src/models/Order');
 
-// OWNER PHONE DEFINITION
-const OWNER_WHATSAPP_JID = "919154699599@c.us"; // Configured for Srinivas
+// OWNER PHONE DEFINITION ( Srinivas )
+const OWNER_WHATSAPP_JID = "919154699599@c.us";
 
-// 3. RUNTIME SELF-INSTALLATION FOR CHROMIUM BINARIES (Bypasses Render Free Tier Dashboard limits)
+// ====================================================================
+// 3. RUNTIME SELF-INSTALLATION FOR CHROMIUM BINARIES
+// ====================================================================
 const localCacheDir = '/opt/render/.cache/puppeteer';
 console.log("🔍 Checking environment browser configuration pathways...");
 
 try {
-    // Force runtime installation if the local cache directory does not exist or is empty
     if (!fs.existsSync(localCacheDir) || fs.readdirSync(localCacheDir).length === 0) {
         console.log("⚠️ Chromium binaries missing from cloud cache instance layer.");
         console.log("🛠️ Starting native background browser engine installation process...");
 
-        // Execute the installation directly inside Render's running container environment
         if (shell.exec('npx puppeteer browsers install chrome').code !== 0) {
             console.error("❌ Background browser engine installation encountered an error.");
         } else {
@@ -65,7 +69,6 @@ const getPuppeteerConfig = () => {
         '/usr/bin/chromium'
     ];
 
-    // Read Render's automatic caching installation structure dynamically
     try {
         if (fs.existsSync(localCacheDir)) {
             const searchForExecutable = (dir) => {
@@ -128,17 +131,12 @@ whatsappClient.on('ready', () => {
 process.on('uncaughtException', (e) => console.error('⚠️ Caught Exception safely:', e.message));
 process.on('unhandledRejection', (r) => console.error('⚠️ Caught Rejection safely:', r));
 
-// Delay initialization slightly to let the network interfaces clear out port channels smoothly
-setTimeout(() => {
-    whatsappClient.initialize().catch(err => console.error("Initial handshake bypass:", err.message));
-}, 7000);
-
+// ====================================================================
 // 4. ROUTE GATEWAY EXPRESS CONFIGURATIONS
+// ====================================================================
 const app = express();
 app.use(cors());
 app.use(express.json());
-
-// --- API LAYER IMPLEMENTATION ROUTES ---
 
 // A. CUSTOMER ACTION: Place order and send raw shopping list directly to owner mobile
 app.post('/api/orders', async (req, res) => {
@@ -357,7 +355,26 @@ app.delete('/api/admin/orders/:id', async (req, res) => {
 
 app.get('/', (req, res) => res.send('Sai Bhavani Engine Operating Normally.'));
 
+// ====================================================================
+// 5. SERVER INITIALIZATION & DATABASE CONNECTION LAYER
+// ====================================================================
 const SERVER_PORT = process.env.PORT || 10000;
-mongoose.connect(process.env.MONGODB_URI).then(() => {
-    app.listen(SERVER_PORT, () => console.log(`Server Core Port: ${SERVER_PORT}`));
-});
+
+// Connect to MongoDB and fire up the Express server immediately
+// so Render instantly detects the open port and clears the health check.
+mongoose.connect(process.env.MONGODB_URI)
+    .then(() => {
+        app.listen(SERVER_PORT, () => {
+            console.log(`🎯 Express Server instantly bound and listening on Port: ${SERVER_PORT}`);
+
+            // Now that Render is happy and the port is open,
+            // safely trigger the WhatsApp connection sequence in the background.
+            console.log("⏳ Initializing WhatsApp client connection pathway...");
+            whatsappClient.initialize().catch(err => {
+                console.error("Initial handshake bypass warning:", err.message);
+            });
+        });
+    })
+    .catch((err) => {
+        console.error("❌ MongoDB Database connection failure:", err.message);
+    });
