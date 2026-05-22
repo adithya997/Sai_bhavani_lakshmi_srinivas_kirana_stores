@@ -1,11 +1,12 @@
 services:
   - type: web
     name: sai-bhavani-stores
-    runtime: node
-    buildCommand: npm install
+    env: node
+    plan: free
+    buildCommand: npm install && npx puppeteer browsers install chrome
     startCommand: node server.js
     envVars:
-      - key: MONGODB_URI
-        sync: false
+      - key: NODE_VERSION
+        value: 18.16.0
       - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
-        value: true
+        value: "false"
