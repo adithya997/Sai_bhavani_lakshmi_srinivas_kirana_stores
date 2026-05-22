@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: sai-bhavani-stores
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
+        value: true

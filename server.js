@@ -22,6 +22,7 @@ const Order = require('./src/models/Order');
 const OWNER_WHATSAPP_JID = "919154699599@c.us"; // Configured for Srinivas
 
 // 3. INITIALIZE WHATSAPP AUTOMATION INSTANCE WITH WEB PARSING OVERRIDES
+// Optimized with Cloud Environment fallbacks to run seamlessly on Render Linux architectures.
 const whatsappClient = new Client({
     authStrategy: new LocalAuth({ dataPath: path.join(__dirname, '.wwebjs_auth') }),
     webVersionCache: {
@@ -30,7 +31,17 @@ const whatsappClient = new Client({
     },
     puppeteer: {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu']
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process',
+            '--disable-gpu'
+        ]
     }
 });
 
