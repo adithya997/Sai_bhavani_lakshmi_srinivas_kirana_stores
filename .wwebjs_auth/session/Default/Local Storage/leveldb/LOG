@@ -1,0 +1,6 @@
+2026/05/21-23:11:37.358 9cc Reusing MANIFEST C:\Users\chenn\dev\green-cart-grocer\.wwebjs_auth\session\Default\Local Storage\leveldb/MANIFEST-000001
+2026/05/21-23:11:37.370 9cc Recovering log #3
+2026/05/21-23:11:37.375 9cc Reusing old log C:\Users\chenn\dev\green-cart-grocer\.wwebjs_auth\session\Default\Local Storage\leveldb/000003.log 
+2026/05/21-23:12:37.393 9cc Level-0 table #5: started
+2026/05/21-23:12:37.427 9cc Level-0 table #5: 16685 bytes OK
+2026/05/21-23:12:37.435 9cc Delete type=0 #3

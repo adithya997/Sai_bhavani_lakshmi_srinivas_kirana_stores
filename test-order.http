@@ -1,0 +1,41 @@
+POST http://localhost:5000/api/orders
+Content-Type: application/json
+
+{
+  "customer": {
+    "name": "Rahul Sharma",
+    "phone": "+91 98765 43210",
+    "address": "Flat 402, Green Glen Layout, Bangalore",
+    "deliveryInstructions": "Leave near the door mat please."
+  },
+  "items": [
+    {
+      "productName": "Fresh Organic Tomatoes",
+      "quantity": 2,
+      "unit": "kg"
+    },
+    {
+      "productName": "Premium Basmati Rice",
+      "quantity": 5,
+      "unit": "kg"
+    },
+    {
+      "productName": "Full Cream Milk",
+      "quantity": 2,
+      "unit": "litre"
+    }
+  ]
+}
+
+###
+PUT http://localhost:5000/api/admin/orders/6a0ef4c8f6aa0057cd3303ed/finalize
+Content-Type: application/json
+
+{
+  "deliveryCharge": 50,
+  "itemPrices": {
+    "Fresh Organic Tomatoes": 40,
+    "Premium Basmati Rice": 130,
+    "Full Cream Milk": 64
+  }
+}
