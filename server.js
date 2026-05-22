@@ -2,7 +2,7 @@
 const dns = require('node:dns');
 dns.setServers(['1.1.1.1', '8.8.8.8']);
 
-// 2. DEPENDENCIES & PACKAGE IMPORTS
+// 2. DEPENDENCIES & PROJECT PACKAGE IMPORTS
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -12,253 +12,287 @@ const PDFDocument = require('pdfkit');
 const QRCode = require('qrcode');
 require('dotenv').config();
 
-// Native WhatsApp Automation Engine Imports
+// Native WhatsApp Automation Engine Dependencies
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcodeTerminal = require('qrcode-terminal');
 
 const Order = require('./src/models/Order');
 
-// 3. INITIALIZE WHATSAPP CLIENT ENGINE WITH STABLE VERSION OVERRIDES
+// OWNER PHONE DEFINITION (Used for Requirement #7: Sends raw list and comments directly here)
+const OWNER_WHATSAPP_JID = "919154699599@c.us"; // Configured for Srinivas
+
+// 3. INITIALIZE WHATSAPP AUTOMATION INSTANCE WITH WEB PARSING OVERRIDES
 const whatsappClient = new Client({
-    authStrategy: new LocalAuth({
-        dataPath: path.join(__dirname, '.wwebjs_auth')
-    }),
+    authStrategy: new LocalAuth({ dataPath: path.join(__dirname, '.wwebjs_auth') }),
     webVersionCache: {
         type: 'remote',
         remotePath: 'https://raw.githubusercontent.com/wwebjs/web-versions/main/remote/2.2412.54.html',
     },
     puppeteer: {
         headless: true,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-gpu'
-        ]
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu']
     }
 });
 
 let isWhatsAppReady = false;
 
 whatsappClient.on('qr', (qr) => {
-    console.log('\n--- SCAN THE QR CODE BELOW WITH YOUR WHATSAPP TO LOG IN ---');
+    console.log('\n--- SCAN THE QR CODE BELOW TO CONNECT OWNER LINE ---');
     qrcodeTerminal.generate(qr, { small: true });
 });
 
 whatsappClient.on('ready', () => {
-    console.log('🚀 WhatsApp Engine Connected Natively & Ready!');
+    console.log('🚀 WhatsApp Engine Connected and Authenticated!');
     isWhatsAppReady = true;
 });
 
-whatsappClient.on('auth_failure', (msg) => {
-    console.error('❌ WhatsApp Auth failure:', msg);
-    isWhatsAppReady = false;
-});
+process.on('uncaughtException', (e) => console.error('⚠️ Caught Exception safely:', e.message));
+process.on('unhandledRejection', (r) => console.error('⚠️ Caught Rejection safely:', r));
 
-whatsappClient.on('disconnected', () => {
-    console.log('❌ WhatsApp Client Disconnected.');
-    isWhatsAppReady = false;
-});
+whatsappClient.initialize().catch(err => console.error("Initial handshake bypass:", err.message));
 
-process.on('uncaughtException', (err) => {
-    console.error('⚠️ Intercepted Uncaught Exception safely:', err.message);
-});
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('⚠️ Intercepted Unhandled Rejection safely:', reason);
-});
-
-whatsappClient.initialize().catch(err => {
-    console.error("WhatsApp initialization bypassed:", err.message);
-});
-
-// 4. INITIALIZE APP & MIDDLEWARE
+// 4. ROUTE GATEWAY EXPRESS CONFIGURATIONS
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- API ENDPOINTS ---
+// --- API LAYER IMPLEMENTATION ROUTES ---
 
-// A. CUSTOMER ROUTE: Place a New Grocery Order
+// A. CUSTOMER ACTION: Place order and send raw shopping list directly to owner mobile (Requirement #7)
 app.post('/api/orders', async (req, res) => {
     try {
         const { customer, items } = req.body;
-
         if (!customer || !customer.name || !customer.phone) {
-            return res.status(400).json({ success: false, error: "Missing required contact fields." });
+            return res.status(400).json({ success: false, error: "Missing identity properties." });
         }
 
-        const processedItems = items.map(item => ({
-            productName: item.productName,
-            quantity: parseFloat(item.quantity) || 1,
-            unit: item.unit || 'piece',
-            price: 0,
-            subtotal: 0
-        }));
-
-        const newOrder = new Order({
-            customer,
-            items: processedItems,
-            status: 'Pending'
-        });
-
+        const newOrder = new Order({ customer, items, status: 'Pending' });
         await newOrder.save();
-        console.log(`📦 Order registered successfully! ID: ${newOrder._id}`);
-        return res.status(201).json({ success: true, message: 'Order submitted to store!', orderId: newOrder._id });
+        console.log(`📦 New Order Saved in Database: ID ${newOrder._id}`);
 
+        // REQUIREMENT #7: Dispatch incoming notification directly to owner terminal profile phone window
+        if (isWhatsAppReady) {
+            let itemsTextSummary = `🔔 *New Order Received! (#${newOrder._id.toString().slice(-6)})*\n`;
+            itemsTextSummary += `👤 *Customer Name:* ${newOrder.customer.name}\n`;
+            itemsTextSummary += `📞 *Phone:* ${newOrder.customer.phone}\n`;
+            if (newOrder.customer.address) itemsTextSummary += `📍 *Address:* ${newOrder.customer.address}\n`;
+            itemsTextSummary += `\n🛒 *GROCERY ITEMS BASKET LIST:*\n`;
+
+            newOrder.items.forEach((item, index) => {
+                itemsTextSummary += `${index + 1}. *${item.productName}* — ${item.quantity} ${item.unit}\n`;
+                if(item.itemComment) {
+                    itemsTextSummary += `   └ 💬 _Option specified:_ "${item.itemComment}"\n`;
+                }
+            });
+
+            await whatsappClient.sendMessage(OWNER_WHATSAPP_JID, itemsTextSummary);
+            console.log(`⚡ Raw collection items list dispatched straight to Owner mobile chat pipeline!`);
+        }
+
+        return res.status(201).json({ success: true, orderId: newOrder._id });
     } catch (error) {
         return res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// B. ADMIN ROUTE: Fetch live orders
+// B. ADMIN ACTION: Fetch sorted pipeline records (Requirement #5: Pending on top, Done below)
 app.get('/api/admin/orders', async (req, res) => {
     try {
-        const pendingOrders = await Order.find({ status: 'Pending' }).sort({ createdAt: -1 });
-        return res.json(pendingOrders);
+        // Automatically delete completed payment records older than 24 hours (Requirement #4)
+        const past24HoursThreshold = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const deletionReport = await Order.deleteMany({
+            status: 'Done',
+            paymentStatus: 'Paid',
+            paidAt: { $lte: past24HoursThreshold }
+        });
+        if(deletionReport.deletedCount > 0) {
+            console.log(`🧹 Cleaned up ${deletionReport.deletedCount} historical Paid orders from the grid visualization workspace.`);
+        }
+
+        // Fetch remaining data sets
+        const allRecords = await Order.find({});
+
+        // Custom sort ranking sequence array mapping block
+        allRecords.sort((x, y) => {
+            if (x.status === 'Pending' && y.status !== 'Pending') return -1;
+            if (x.status !== 'Pending' && y.status === 'Pending') return 1;
+            // Secondary ranking criterion: sorting based on incoming chronological timestamps
+            return new Date(y.createdAt) - new Date(x.createdAt);
+        });
+
+        return res.json(allRecords);
     } catch (error) {
         return res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// C. ADMIN ROUTE: Finalize Prices, Generate PDF, and Send via WhatsApp
+// C. ADMIN ACTION: Finalize Pricing, Draw Tabular PDF with Per-Unit Costs (Requirements #2, #9, #10)
 app.put('/api/admin/orders/:id/finalize', async (req, res) => {
     try {
         const { id } = req.params;
         const { itemPrices } = req.body;
 
         const order = await Order.findById(id);
-        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+        if (!order) return res.status(404).json({ success: false, message: 'Order reference entry missing' });
 
-        let calculatedTotalAmount = 0;
-
+        let grandSum = 0;
         order.items.forEach(item => {
-            const inputPrice = parseFloat(itemPrices[item.productName]) || 0;
-            item.price = inputPrice;
+            const counterRatePerUnit = parseFloat(itemPrices[item.productName]) || 0;
+            item.price = counterRatePerUnit;
 
-            // Normalized lower-case matching to capture different customer entries safely
-            const unitType = item.unit.toLowerCase().trim();
-
-            if (unitType === 'gram' || unitType === 'gms') {
-                // Gram to KG conversion rule
-                item.subtotal = (item.quantity / 1000) * inputPrice;
-            } else if (unitType === 'ml' || unitType === 'mls' || unitType === 'milliliter') {
-                // ML to Liter conversion rule
-                item.subtotal = (item.quantity / 1000) * inputPrice;
+            const standardUnit = item.unit.toLowerCase().trim();
+            if (standardUnit === 'gram' || standardUnit === 'gms') {
+                item.subtotal = (item.quantity / 1000) * counterRatePerUnit;
+            } else if (standardUnit === 'ml' || standardUnit === 'mls') {
+                item.subtotal = (item.quantity / 1000) * counterRatePerUnit;
             } else {
-                // Direct pricing logic for standard kg, litre, packet, piece strings
-                item.subtotal = item.quantity * inputPrice;
+                item.subtotal = item.quantity * counterRatePerUnit;
             }
-
-            calculatedTotalAmount += item.subtotal;
+            grandSum += item.subtotal;
         });
 
-        order.deliveryCharge = 0;
-        order.totalAmount = Math.round(calculatedTotalAmount * 100) / 100;
+        order.totalAmount = Math.round(grandSum * 100) / 100;
         order.status = 'Done';
         await order.save();
 
-        // Generate Custom UPI Payment String
-        const storeUPI_ID = "8885290420@axl";
-        const storeName = encodeURIComponent("Green Cart Grocer");
-        const transactionNote = encodeURIComponent(`Order_${order._id}`);
-        const upiString = `upi://pay?pa=${storeUPI_ID}&pn=${storeName}&am=${order.totalAmount}&tn=${transactionNote}&cu=INR`;
+        // UPI Matrix Payload Generation
+        const storeUPI = "9154699599@ybl";
+        const titleString = encodeURIComponent("Sai Bhavani Kirana Stores");
+        const upiURI = `upi://pay?pa=${storeUPI}&pn=${titleString}&am=${order.totalAmount}&cu=INR`;
 
-        // Generate temporary QR image file
-        const qrImagePath = path.join(__dirname, `temp_qr_${order._id}.png`);
-        await QRCode.toFile(qrImagePath, upiString, { width: 180, margin: 1 });
+        const qrImgPath = path.join(__dirname, `qr_temp_${order._id}.png`);
+        await QRCode.toFile(qrImgPath, upiURI, { width: 140, margin: 1 });
 
-        // Generate PDF Document
-        const doc = new PDFDocument({ margin: 50 });
-        const pdfFilename = `Invoice_${order._id}.pdf`;
-        const pdfPath = path.join(__dirname, pdfFilename);
-        const writeStream = fs.createWriteStream(pdfPath);
+        // PDF Generation (Requirement #10: Clean Tabular Matrix Layout)
+        const doc = new PDFDocument({ margin: 40 });
+        const pdfName = `Invoice_Receipt_${order._id}.pdf`;
+        const localPdfFilePath = path.join(__dirname, pdfName);
+        const writeStream = fs.createWriteStream(localPdfFilePath);
         doc.pipe(writeStream);
 
-        // Draw PDF layouts
-        doc.fontSize(22).text('GREEN CART GROCER', { align: 'center', underline: true }).moveDown();
-        doc.fontSize(10).text(`Invoice ID: ${order._id}`);
-        doc.text(`Customer Name: ${order.customer.name}`);
-        doc.text(`Phone: ${order.customer.phone}`).moveDown();
-        doc.text('---------------------------------------------------------------------------------', { align: 'center' }).moveDown();
+        // Header Title Graphics (Requirement #1)
+        doc.fillColor('#047857').fontSize(18).text('SAI BHAVANI KIRANA GENRAL STORES', { align: 'center', bold: true });
+        doc.fillColor('#475569').fontSize(11).text('(Battani shop)', { align: 'center' }).moveDown(1.5);
 
-        order.items.forEach(item => {
-            doc.fontSize(11).text(`${item.productName} (${item.quantity} ${item.unit})`, { continued: true });
+        doc.fillColor('#1e293b').fontSize(9);
+        doc.text(`Receipt Reference Token ID: ${order._id.toString().toUpperCase()}`);
+        doc.text(`Issued To Customer: ${order.customer.name}`);
+        doc.text(`Mobile Contact: ${order.customer.phone}`);
+        doc.text(`Timestamp: ${new Date().toLocaleString()}`).moveDown(1.5);
 
-            const unitType = item.unit.toLowerCase().trim();
+        // TABLE RENDER STRUCTURE (Requirement #10 Layout Engine)
+        const tableTopOffset = doc.y;
+        doc.font('Helvetica-Bold').fillColor('#ffffff');
 
-            // Format descriptive lines for the customer receipt printout
-            if (unitType === 'gram' || unitType === 'gms') {
-                doc.text(` [@ ₹${item.price}/kg] - ₹${item.subtotal.toFixed(2)}`, { align: 'right' });
-            } else if (unitType === 'ml' || unitType === 'mls' || unitType === 'milliliter') {
-                doc.text(` [@ ₹${item.price}/litre] - ₹${item.subtotal.toFixed(2)}`, { align: 'right' });
-            } else {
-                doc.text(` - ₹${item.subtotal.toFixed(2)}`, { align: 'right' });
+        // Draw Header Colored Ribbon Back-Box Row Strip
+        doc.rect(40, tableTopOffset, 530, 20).fill('#047857');
+        doc.fillColor('#ffffff');
+        doc.text('Particular Item Description', 45, tableTopOffset + 6);
+        doc.text('Qty Ordered', 240, tableTopOffset + 6);
+        doc.text('Rate per Unit', 340, tableTopOffset + 6);
+        doc.text('Total Subtotal', 480, tableTopOffset + 6, { width: 80, align: 'right' });
+
+        let ongoingYOffset = tableTopOffset + 20;
+        doc.font('Helvetica').fillColor('#334155');
+
+        order.items.forEach((item, index) => {
+            // Alternating shaded background tracks for clean text contrast
+            if (index % 2 === 1) {
+                doc.rect(40, ongoingYOffset, 530, 20).fill('#f8fafc');
+            }
+            doc.fillColor('#334155');
+            doc.text(item.productName, 45, ongoingYOffset + 6);
+            doc.text(`${item.quantity} ${item.unit}`, 240, ongoingYOffset + 6);
+
+            // Format rates based on conversion definitions (Requirement #2 & Fix #9)
+            let rawRateLabel = `Rs. ${item.price.toFixed(2)}`;
+            if(item.unit === 'gram' || item.unit === 'gms') rawRateLabel = `Rs. ${item.price.toFixed(2)} /kg`;
+            if(item.unit === 'ml' || item.unit === 'mls') rawRateLabel = `Rs. ${item.price.toFixed(2)} /ltr`;
+
+            doc.text(rawRateLabel, 340, ongoingYOffset + 6);
+            doc.text(`Rs. ${item.subtotal.toFixed(2)}`, 480, ongoingYOffset + 6, { width: 80, align: 'right' });
+
+            ongoingYOffset += 20;
+
+            // Render sub-line if an inline option comment was written
+            if(item.itemComment) {
+                doc.rect(40, ongoingYOffset, 530, 14).fill('#f0f9ff');
+                doc.fillColor('#0369a1').fontSize(8).text(`  ↳ Spec option: "${item.itemComment}"`, 45, ongoingYOffset + 3);
+                ongoingYOffset += 14;
+                doc.fontSize(9); // Reset font size
             }
         });
 
-        doc.moveDown();
-        doc.text('---------------------------------------------------------------------------------', { align: 'center' }).moveDown();
-        doc.fontSize(14).text(`Total Bill Value: ₹${order.totalAmount.toFixed(2)}`, { align: 'right', bold: true }).moveDown(2);
+        // Total Section Block Row Strip Calculation Rendering
+        ongoingYOffset += 10;
+        doc.rect(40, ongoingYOffset, 530, 2).fill('#e2e8f0');
+        ongoingYOffset += 8;
+        doc.font('Helvetica-Bold').fillColor('#0f172a').fontSize(12);
+        doc.text('Final Settled Bill Amount Value:', 280, ongoingYOffset);
+        doc.text(`Rs. ${order.totalAmount.toFixed(2)}`, 480, ongoingYOffset, { width: 80, align: 'right' });
 
-        if (fs.existsSync(qrImagePath)) {
-            doc.image(qrImagePath, { fit: [150, 150], align: 'center' });
+        // Embed Custom UPI Verification code matrix
+        if (fs.existsSync(qrImgPath)) {
+            doc.moveDown(2);
+            doc.fontSize(8).fillColor('#64748b').text('Scan QR Code via PhonePe/GPay/BHIM to pay:', { align: 'center' }).moveDown(0.5);
+            doc.image(qrImgPath, doc.page.width / 2 - 50, doc.y, { width: 100 });
         }
+
         doc.end();
 
-        // TRANSMIT DOCUMENT DIRECTLY AFTER STREAM COMPILING COMPLETES
+        // WHATSAPP AUTOMATION FILE DELIVERY DISPATCH TRIGGER HOOK
         writeStream.on('finish', () => {
-            if (fs.existsSync(qrImagePath)) {
-                try { fs.unlinkSync(qrImagePath); } catch(e) {}
-            }
+            try { if (fs.existsSync(qrImgPath)) fs.unlinkSync(qrImgPath); } catch(err) {}
 
-            let cleanPhone = order.customer.phone.replace(/\D/g, '');
-            if (cleanPhone.startsWith('91') && cleanPhone.length > 10) {
-                cleanPhone = cleanPhone.substring(2);
-            }
-            const whatsappChatId = `91${cleanPhone}@c.us`;
+            let refinedPhone = order.customer.phone.replace(/\D/g, '');
+            if (refinedPhone.startsWith('91') && refinedPhone.length > 10) refinedPhone = refinedPhone.substring(2);
+            const targetsJID = `91${refinedPhone}@c.us`;
 
-            const textMessageBody = `Hello ${order.customer.name},\n\nYour order from *Green Cart Grocer* is packed and ready for pickup! 🛒\n\n💰 *Total Amount:* ₹${order.totalAmount.toFixed(2)}\n\nYour physical invoice PDF is attached directly below. Thank you!`;
+            const welcomeNotificationBody = `Hello ${order.customer.name},\n\nYour grocery list from *Sai Bhavani Kirana Genral Stores (Battani shop)* has been compiled! 🛍️\n\n💰 *Total Amount:* Rs. ${order.totalAmount.toFixed(2)}\n\nYour clean tabular tax invoice document file is attached right underneath. Thank you for your business!`;
 
             setTimeout(async () => {
-                if (!isWhatsAppReady) {
-                    console.error("⚠️ WhatsApp client is offline. Skipping document delivery.");
-                    return;
-                }
+                if (!isWhatsAppReady) return console.error("WhatsApp transport link currently down.");
                 try {
-                    console.log(`\n📬 Delivering physical invoice PDF file attachment to: ${whatsappChatId}`);
-
-                    await whatsappClient.sendMessage(whatsappChatId, textMessageBody);
-
-                    if (fs.existsSync(pdfPath)) {
-                        const fileBuffer = fs.readFileSync(pdfPath);
-                        const base64Content = fileBuffer.toString('base64');
-                        const mediaAttachment = new MessageMedia('application/pdf', base64Content, `Invoice_${order._id}.pdf`);
-
-                        await whatsappClient.sendMessage(whatsappChatId, mediaAttachment);
-                        console.log(`✅ File Document Attachment landed safely on client phone window!`);
-
-                        try { fs.unlinkSync(pdfPath); } catch(e) {}
+                    await whatsappClient.sendMessage(targetsJID, welcomeNotificationBody);
+                    if (fs.existsSync(localPdfFilePath)) {
+                        const fileStringData = fs.readFileSync(localPdfFilePath).toString('base64');
+                        const documentObjectMedia = new MessageMedia('application/pdf', fileStringData, `Tax_Receipt_Bill.pdf`);
+                        await whatsappClient.sendMessage(targetsJID, documentObjectMedia);
+                        try { fs.unlinkSync(localPdfFilePath); } catch(err) {}
                     }
-                } catch (waError) {
-                    console.error("❌ Media stream transmission task issue handled safely:", waError.message);
-                }
+                } catch(waErr) { console.error("Failed to transmit notification:", waErr.message); }
             }, 800);
         });
 
-        return res.json({
-            success: true,
-            message: 'Order updated to DONE. Invoice file generated with automatic unit conversions.',
-            order
-        });
-
-    } catch (error) {
-        return res.status(500).json({ success: false, error: error.message });
-    }
+        return res.json({ success: true, order });
+    } catch(err) { return res.status(500).json({ success: false, error: err.message }); }
 });
 
-// Root Health Check Route
-app.get('/', (req, res) => { res.send('Green Cart Grocer running perfectly!'); });
+// D. ADMIN ACTION: Toggle Unpaid/Paid status and log timestamp (Requirement #4)
+app.patch('/api/admin/orders/:id/payment', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { paymentStatus } = req.body;
 
-const PORT = process.env.PORT || 5000;
+        const timestampValue = (paymentStatus === 'Paid') ? new Date() : null;
+        const order = await Order.findByIdAndUpdate(id, { paymentStatus, paidAt: timestampValue }, { new: true });
+
+        return res.json({ success: true, order });
+    } catch(err) { return res.status(500).json({ success: false, error: err.message }); }
+});
+
+// E. ADMIN ACTION: Delete an individual order card (Requirement #3)
+app.delete('/api/admin/orders/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await Order.findByIdAndDelete(id);
+        return res.json({ success: true, message: "Order removed from database." });
+    } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
+});
+
+app.get('/', (req, res) => res.send('Sai Bhavani Engine Operating Normally.'));
+
+const SERVER_PORT = process.env.PORT || 5000;
 mongoose.connect(process.env.MONGODB_URI).then(() => {
-    app.listen(PORT, () => console.log(`Server executing locally on port ${PORT}`));
+    app.listen(SERVER_PORT, () => console.log(`Server Core Port: ${SERVER_PORT}`));
 });

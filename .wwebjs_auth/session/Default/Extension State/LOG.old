@@ -1,2 +1,3 @@
-2026/05/21-22:49:42.453 5228 Creating DB C:\Users\chenn\dev\green-cart-grocer\.wwebjs_auth\session\Default\Extension State since it was missing.
-2026/05/21-22:49:42.464 5228 Reusing MANIFEST C:\Users\chenn\dev\green-cart-grocer\.wwebjs_auth\session\Default\Extension State/MANIFEST-000001
+2026/05/22-15:49:46.697 8cc Reusing MANIFEST C:\Users\chenn\dev\green-cart-grocer\.wwebjs_auth\session\Default\Extension State/MANIFEST-000001
+2026/05/22-15:49:46.699 8cc Recovering log #3
+2026/05/22-15:49:46.700 8cc Reusing old log C:\Users\chenn\dev\green-cart-grocer\.wwebjs_auth\session\Default\Extension State/000003.log 

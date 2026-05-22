@@ -1,29 +1,27 @@
 const mongoose = require('mongoose');
 
-const orderItemSchema = new mongoose.Schema({
+const OrderItemSchema = new mongoose.Schema({
     productName: { type: String, required: true },
     quantity: { type: Number, required: true },
     unit: { type: String, required: true },
     price: { type: Number, default: 0 },
-    subtotal: { type: Number, default: 0 }
+    subtotal: { type: Number, default: 0 },
+    itemComment: { type: String, default: '' } // Added for item brand/type descriptions
 });
 
-const orderSchema = new mongoose.Schema({
+const OrderSchema = new mongoose.Schema({
     customer: {
         name: { type: String, required: true },
         phone: { type: String, required: true },
-        address: { type: String, required: true },
-        deliveryInstructions: { type: String }
+        address: { type: String, default: '' },
+        deliveryInstructions: { type: String, default: '' }
     },
-    items: [orderItemSchema],
-    deliveryCharge: { type: Number, default: 0 },
+    items: [OrderItemSchema],
     totalAmount: { type: Number, default: 0 },
-    status: {
-        type: String,
-        enum: ['Pending', 'Pricing Added', 'Awaiting Payment', 'Payment Confirmed', 'Packing', 'Ready', 'Out for Delivery', 'Delivered', 'Done'],        default: 'Pending'
-    }
+    deliveryCharge: { type: Number, default: 0 },
+    status: { type: String, default: 'Pending' }, // 'Pending' or 'Done'
+    paymentStatus: { type: String, default: 'Unpaid' }, // 'Unpaid' or 'Paid'
+    paidAt: { type: Date } // Tracks when payment was completed for the 24-hour automatic purge
 }, { timestamps: true });
 
-
-
-module.exports = mongoose.model('Order', orderSchema);
+module.exports = mongoose.model('Order', OrderSchema);
