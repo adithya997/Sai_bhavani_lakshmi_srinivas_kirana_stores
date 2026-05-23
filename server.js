@@ -273,12 +273,24 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         itemsTextSummary += `🔗 *Pay Instantly via any UPI App / ఇప్పుడే పేమెంట్ చేయడానికి కింద ఉన్న లింక్‌ని క్లిక్ చేయండి:* \n${phonePeFallbackUrl}\n\n`;
         itemsTextSummary += `📥 _Your detailed digital invoice PDF file is attached below with standard per-unit pricing records._`;
 
+        // ====================================================================
+        // STABLE, STAGE-SAFE WHATSAPP DELIVERY ENGINE
+        // ====================================================================
+        // Clean and refine phone structure format safely
         let refinedPhone = order.customer.phone.replace(/\D/g, '');
         if (refinedPhone.length === 10) refinedPhone = '91' + refinedPhone;
 
+        const targetChatId = refinedPhone.includes('@c.us') ? refinedPhone : `${refinedPhone}@c.us`;
+
         if (fs.existsSync(localTargetPdfPath)) {
             const mediaVectorInstance = MessageMedia.fromFilePath(localTargetPdfPath);
-            await whatsappClient.sendMessage(`${refinedPhone}@c.us`, mediaVectorInstance, { caption: itemsTextSummary });
+
+            // CRITICAL SAFEGUARD: Block execution if client runtime properties aren't loaded yet
+            if (!whatsappClient || !whatsappClient.info) {
+                throw new Error("WhatsApp connection engine is cold-booting. Please wait 10 seconds and try again.");
+            }
+
+            await whatsappClient.sendMessage(targetChatId, mediaVectorInstance, { caption: itemsTextSummary });
 
             // File system resource clean up
             fs.unlinkSync(localTargetPdfPath);
