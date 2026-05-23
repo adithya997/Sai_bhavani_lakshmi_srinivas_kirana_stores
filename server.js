@@ -83,6 +83,7 @@ if (targetDatabaseURI) {
 
 const whatsappClient = new Client({
     authStrategy: new LocalAuth(),
+    authTimeoutMs: 100000,
     puppeteer: getPuppeteerConfig()
 });
 
