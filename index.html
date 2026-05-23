@@ -3,126 +3,271 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Owner Dashboard — Sai Bhavani Kirana Stores</title>
+    <title>Owner Dashboard — Sai Bhavani Kirana General Stores</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style> body { font-family: 'Plus Jakarta Sans', sans-serif; } </style>
 </head>
 <body class="bg-slate-50 min-h-screen antialiased text-slate-800">
 
 <nav class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm backdrop-blur-md bg-white/90">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16 items-center">
+        <div class="flex justify-between h-20 items-center">
             <div class="flex items-center space-x-3">
                 <span class="text-2xl">🏪</span>
                 <div>
-                    <h1 class="text-base font-bold text-slate-900 tracking-tight">Sai Bhavani Kirana General Stores</h1>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Owner Console Hub (యజమాని డాష్‌బోర్డ్)</p>
+                    <h1 class="text-sm md:text-base font-bold text-slate-900 tracking-tight">Sai Bhavani Kirana General Stores</h1>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Owner Console Hub / యజమాని డాష్ُ‌బోర్డ్</p>
                 </div>
             </div>
-            <button onclick="fetchAllLiveOrders()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-xs transition-all active:scale-95">
-                🔄 Refresh Grid
-            </button>
+
+            <div class="flex items-center gap-2">
+                <div class="bg-slate-100 p-1 rounded-xl border border-slate-200 flex gap-1">
+                    <button id="viewAllBtn" onclick="applyDashboardViewFilter('all')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-slate-800 shadow-2xs">
+                        👁️ Show All
+                    </button>
+                    <button id="viewPendingBtn" onclick="applyDashboardViewFilter('pending')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-slate-900">
+                        ⏳ Pending Only
+                    </button>
+                    <button id="viewProcessedBtn" onclick="applyDashboardViewFilter('processed')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-slate-900">
+                        ✅ Processed Only
+                    </button>
+                </div>
+                <button onclick="fetchAllLiveOrders()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95">
+                    🔄 Refresh
+                </button>
+            </div>
         </div>
     </div>
 </nav>
 
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+
+    <div class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-            <h2 class="text-lg font-bold text-slate-900 tracking-tight">Live Active Pipeline</h2>
-            <p class="text-xs text-slate-500 mt-0.5">Pending items sit up top grouped chronologically.</p>
+            <h2 class="text-lg font-bold text-slate-900 tracking-tight">Live Active Pipeline / ఆర్డర్ పైప్‌లైన్</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Partitioned administration configuration layout grid engine.</p>
         </div>
-        <div class="flex gap-3">
-            <span id="pendingTally" class="bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1">0 Pending</span>
-            <span id="completedTally" class="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1">0 Processed</span>
+        <div class="flex flex-wrap gap-2">
+            <span id="pendingTally" class="bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1.5 rounded-xl text-xs font-bold shadow-2xs">0 Pending Pricing</span>
+            <span id="completedTally" class="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-xl text-xs font-bold shadow-2xs">0 Processed Handled</span>
         </div>
     </div>
 
-    <div id="ordersMasterGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div class="col-span-full py-12 text-center text-slate-400 text-sm font-medium bg-white border border-dashed rounded-3xl">
-            Connecting to system storage modules...
+    <div class="space-y-10">
+
+        <div id="pendingSectionWrapper" class="block">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1 rounded-md">
+                    ⏳ Pending Orders Section / పెండింగ్ ఆర్డర్లు
+                </h3>
+            </div>
+            <div id="pendingGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
         </div>
+
+        <div id="processedSectionWrapper" class="block">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="flex h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-md">
+                    ✅ Processed Orders Section / పూర్తి అయిన ఆర్డర్లు
+                </h3>
+            </div>
+            <div id="processedGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+
     </div>
 </main>
 
 <script>
     const CORE_API = "https://sai-bhavani-stores.onrender.com/api";
+    let activeFilterMode = 'all'; // Can be 'all', 'pending', or 'processed'
+
+    // Flexible Filter Controller layout logic engine
+    function applyDashboardViewFilter(mode) {
+        activeFilterMode = mode;
+        const pendingSection = document.getElementById('pendingSectionWrapper');
+        const processedSection = document.getElementById('processedSectionWrapper');
+
+        const btnAll = document.getElementById('viewAllBtn');
+        const btnPend = document.getElementById('viewPendingBtn');
+        const btnProc = document.getElementById('viewProcessedBtn');
+
+        // Reset styling across all tabs
+        [btnAll, btnPend, btnProc].forEach(btn => {
+            btn.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-slate-900";
+        });
+
+        if (mode === 'all') {
+            btnAll.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-slate-800 shadow-2xs border border-slate-200/60";
+            pendingSection.style.display = 'block';
+            processedSection.style.display = 'block';
+        }
+        else if (mode === 'pending') {
+            btnPend.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-amber-500 text-white shadow-2xs";
+            pendingSection.style.display = 'block';
+            processedSection.style.display = 'none'; // Lock out processed view entirely
+        }
+        else if (mode === 'processed') {
+            btnProc.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-emerald-600 text-white shadow-2xs";
+            pendingSection.style.display = 'none'; // Lock out pending view entirely
+            processedSection.style.display = 'block';
+        }
+    }
 
     async function fetchAllLiveOrders() {
-        const grid = document.getElementById('ordersMasterGrid');
+        const pendingGrid = document.getElementById('pendingGrid');
+        const processedGrid = document.getElementById('processedGrid');
+
         try {
             const response = await fetch(`${CORE_API}/admin/orders`);
             const orders = await response.json();
 
             const pendingCount = orders.filter(o => o.status === 'Pending').length;
             const doneCount = orders.filter(o => o.status === 'Done').length;
-            document.getElementById('pendingTally').innerText = `${pendingCount} Pending Pricing`;
-            document.getElementById('completedTally').innerText = `${doneCount} Processed Handled`;
 
-            if(!orders || orders.length === 0) {
-                grid.innerHTML = `<div class="col-span-full py-16 text-center bg-white rounded-3xl border border-dashed text-slate-400 text-sm">No incoming records found.</div>`;
+            document.getElementById('pendingTally').innerText = `${pendingCount} Pending Pricing / పెండింగ్`;
+            document.getElementById('completedTally').innerText = `${doneCount} Processed Handled / పూర్తి అయినవి`;
+
+            pendingGrid.innerHTML = '';
+            processedGrid.innerHTML = '';
+
+            if (!orders || orders.length === 0) {
+                const emptyHTML = `<div class="col-span-full py-12 text-center text-slate-400 text-sm font-medium bg-white border border-dashed border-slate-200 rounded-3xl">No checkout records available inside cloud database pool.</div>`;
+                pendingGrid.innerHTML = emptyHTML;
+                processedGrid.innerHTML = emptyHTML;
                 return;
             }
-
-            grid.innerHTML = '';
 
             orders.forEach(order => {
                 const isDone = order.status === 'Done';
                 let itemsHtml = '';
 
-                order.items.forEach(item => {
+                order.items.forEach((item, index) => {
                     let helper = (item.unit==='gram'||item.unit==='gms'||item.unit==='ml'||item.unit==='mls') ? ' <span class="text-emerald-600 font-bold text-[9px]">(Enter KG/Ltr Rate)</span>' : '';
+                    const isOOS = item.price === -1;
+
                     itemsHtml += `
-                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
-                            <div class="text-xs font-semibold text-slate-800">
+                        <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
+                            <div class="text-xs font-semibold text-slate-800 max-w-[65%]">
                                 📦 ${item.productName} <span class="bg-white px-1.5 py-0.5 rounded border font-bold text-[10px] text-slate-500">${item.quantity} ${item.unit}</span>${helper}
+                                ${item.itemComment ? `<div class="text-[10px] text-sky-700 italic font-medium mt-0.5">💬 Config: ${item.itemComment}</div>` : ''}
                             </div>
-                            <div class="w-24 relative flex items-center">
-                                <span class="absolute left-2 text-slate-400 text-xs">Rs.</span>
-                                <input type="number" step="any" placeholder="0.00"
-                                       data-order-id="${order._id}" data-item-name="${item.productName}" data-qty="${item.quantity}" data-unit="${item.unit.toLowerCase().trim()}"
-                                       value="${isDone ? item.price : ''}" ${isDone ? 'disabled' : `oninput="calculateLiveCardTotal('${order._id}')"`}
-                                       class="w-full pl-7 pr-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-right disabled:bg-slate-100">
+                            <div class="flex flex-col items-end gap-1">
+                                <div class="w-24 relative flex items-center">
+                                    <span class="absolute left-2 text-slate-400 text-[11px]">Rs.</span>
+                                    <input type="number" step="any" placeholder="0.00"
+                                           id="price_${order._id}_${index}"
+                                           data-order-id="${order._id}" data-item-name="${item.productName}" data-qty="${item.quantity}" data-unit="${item.unit.toLowerCase().trim()}"
+                                           value="${isDone ? (isOOS ? '0' : item.price) : ''}" ${isDone || isOOS ? 'disabled' : `oninput="calculateLiveCardTotal('${order._id}')"`}
+                                           class="w-full pl-7 pr-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-right text-slate-800 disabled:bg-slate-100">
+                                </div>
+                                ${!isDone ? `
+                                    <label class="flex items-center gap-1 cursor-pointer select-none">
+                                        <input type="checkbox" id="oos_${order._id}_${index}" onchange="toggleItemAvailability('${order._id}', ${index})" class="rounded border-slate-300 text-red-500 focus:ring-red-400 w-3 h-3">
+                                        <span class="text-[10px] font-bold text-red-600">Not Available / లేదు</span>
+                                    </label>
+                                ` : isOOS ? `<span class="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-100">Out Of Stock</span>` : ''}
                             </div>
                         </div>
                     `;
                 });
 
-                grid.insertAdjacentHTML('beforeend', `
-                    <div class="bg-white rounded-3xl border border-slate-200 p-5 flex flex-col gap-4 relative shadow-xs" id="card_${order._id}">
-                        <button onclick="deleteOrderRecord('${order._id}')" class="absolute top-4 right-4 text-slate-300 hover:text-red-500">🗑️</button>
+                // Generate active status layout badge configurations dynamically
+                let payStatusBadge = '';
+                if (order.paymentStatus === 'Paid Online') {
+                    payStatusBadge = '<span class="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-full">🔵 Paid Online</span>';
+                } else if (order.paymentStatus === 'Paid Cash') {
+                    payStatusBadge = '<span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full">🟢 Paid Cash</span>';
+                } else {
+                    payStatusBadge = '<span class="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-2 py-0.5 rounded-full">🔴 Unpaid</span>';
+                }
+
+                const cardHTML = `
+                    <div class="bg-white rounded-3xl border border-slate-200 p-5 flex flex-col gap-4 relative shadow-xs hover:shadow-md transition-all duration-200" id="card_${order._id}">
+                        <button onclick="deleteOrderRecord('${order._id}')" class="absolute top-4 right-4 text-slate-300 hover:text-red-500 transition-colors text-sm">🗑️</button>
                         <div>
-                            <h3 class="text-sm font-bold text-slate-900">${order.customer.name}</h3>
-                            <p class="text-xs text-slate-500">📞 ${order.customer.phone}</p>
+                            <div class="flex gap-1.5 items-center flex-wrap">
+                                <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${isDone ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}">${order.status}</span>
+                                ${payStatusBadge}
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-900 mt-2">${order.customer.name}</h3>
+                            <p class="text-xs text-slate-500 font-semibold">📞 WhatsApp: ${order.customer.phone}</p>
                         </div>
                         <div class="space-y-2 flex-1">${itemsHtml}</div>
-                        <div class="bg-slate-50 p-3 rounded-xl border flex justify-between items-center">
-                            <span class="text-xs font-bold text-slate-600">Total Bill:</span>
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 flex justify-between items-center">
+                            <span class="text-xs font-bold text-slate-600">Total Bill / మొత్తం బిల్లు:</span>
                             <span class="text-sm font-black text-slate-900" id="totalLabel_${order._id}">Rs. ${order.totalAmount.toFixed(2)}</span>
                         </div>
+
                         ${isDone ? `
-                            <div class="flex gap-2">
-                                <button onclick="updatePaymentState('${order._id}', 'Unpaid')" class="flex-1 py-1.5 text-xs font-bold rounded-lg ${order.paymentStatus === 'Unpaid' ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-600'}">🔴 Unpaid</button>
-                                <button onclick="updatePaymentState('${order._id}', 'Paid')" class="flex-1 py-1.5 text-xs font-bold rounded-lg ${order.paymentStatus === 'Paid' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'}">🟢 Paid</button>
+                            <div class="flex flex-col gap-1.5 border-t border-slate-100 pt-3">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Alter Payment Mode:</span>
+                                <div class="grid grid-cols-3 gap-1">
+                                    <button onclick="updatePaymentState('${order._id}', 'Unpaid')" class="py-1.5 text-[10px] font-bold rounded-lg border transition-all ${order.paymentStatus === 'Unpaid' ? 'bg-red-500 text-white border-red-500 shadow-xs' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}">🔴 Unpaid</button>
+                                    <button onclick="updatePaymentState('${order._id}', 'Paid Online')" class="py-1.5 text-[10px] font-bold rounded-lg border transition-all ${order.paymentStatus === 'Paid Online' ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}">🔵 Online</button>
+                                    <button onclick="updatePaymentState('${order._id}', 'Paid Cash')" class="py-1.5 text-[10px] font-bold rounded-lg border transition-all ${order.paymentStatus === 'Paid Cash' ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}">🟢 Cash</button>
+                                </div>
                             </div>
                         ` : `
-                            <button onclick="commitOrderPricing('${order._id}')" id="btn_${order._id}" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2 rounded-xl text-xs">Compile & Send Invoice</button>
+                            <button onclick="commitOrderPricing('${order._id}')" id="btn_${order._id}" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-xl text-xs tracking-wider transition-all shadow-xs active:scale-98">Compile & Send Invoice</button>
                         `}
                     </div>
-                `);
+                `;
+
+                if (isDone) {
+                    processedGrid.insertAdjacentHTML('beforeend', cardHTML);
+                } else {
+                    pendingGrid.insertAdjacentHTML('beforeend', cardHTML);
+                }
             });
-        } catch(e) { grid.innerHTML = `<div class="col-span-full p-4 bg-red-50 text-red-600 text-center rounded-xl">API Gateway Offline. Check backend.</div>`; }
+
+            if (pendingGrid.children.length === 0) {
+                pendingGrid.innerHTML = `<div class="col-span-full py-8 text-center text-slate-400 text-xs bg-slate-100/50 rounded-2xl border border-dashed border-slate-200">🎉 No orders currently pending configuration!</div>`;
+            }
+            if (processedGrid.children.length === 0) {
+                processedGrid.innerHTML = `<div class="col-span-full py-8 text-center text-slate-400 text-xs bg-slate-100/50 rounded-2xl border border-dashed border-slate-200">History log empty. Processed configurations will display here.</div>`;
+            }
+
+            // Keep the user-selected view filter consistent across refreshes
+            applyDashboardViewFilter(activeFilterMode);
+
+        } catch(e) {
+            pendingGrid.innerHTML = `<div class="col-span-full p-4 bg-red-50 text-red-600 text-center rounded-xl font-bold text-xs border border-red-100">API Gateway Communication Failure: ${e.message}</div>`;
+        }
+    }
+
+    function toggleItemAvailability(orderId, index) {
+        const checkbox = document.getElementById(`oos_${orderId}_${index}`);
+        const inputField = document.getElementById(`price_${orderId}_${index}`);
+
+        if (checkbox.checked) {
+            inputField.value = "0"; inputField.disabled = true;
+            inputField.classList.add('bg-red-50','text-slate-400');
+        } else {
+            inputField.value = ""; inputField.disabled = false;
+            inputField.classList.remove('bg-red-50','text-slate-400');
+        }
+        calculateLiveCardTotal(orderId);
     }
 
     function calculateLiveCardTotal(orderId) {
         let total = 0;
-        document.querySelectorAll(`input[data-order-id="${orderId}"]`).forEach(input => {
+        const inputs = document.querySelectorAll(`input[data-order-id="${orderId}"]`);
+
+        inputs.forEach((input, index) => {
+            const checkbox = document.getElementById(`oos_${orderId}_${index}`);
+            if (checkbox && checkbox.checked) return;
+
             const rate = parseFloat(input.value) || 0;
             const qty = parseFloat(input.getAttribute('data-qty')) || 0;
             const unit = input.getAttribute('data-unit');
-            if (unit === 'gram' || unit === 'gms' || unit === 'ml' || unit === 'mls') total += (qty / 1000) * rate;
-            else total += qty * rate;
+
+            if (unit === 'gram' || unit === 'gms' || unit === 'ml' || unit === 'mls') {
+                total += (qty / 1000) * rate;
+            } else {
+                total += qty * rate;
+            }
         });
         document.getElementById(`totalLabel_${orderId}`).innerText = `Rs. ${total.toFixed(2)}`;
     }
@@ -130,14 +275,22 @@
     async function commitOrderPricing(orderId) {
         const itemPrices = {};
         let missing = false;
-        document.querySelectorAll(`input[data-order-id="${orderId}"]`).forEach(input => {
-            if(!input.value.trim()) missing = true;
-            else itemPrices[input.getAttribute('data-item-name')] = parseFloat(input.value);
+
+        const inputs = document.querySelectorAll(`input[data-order-id="${orderId}"]`);
+        inputs.forEach((input, index) => {
+            const checkbox = document.getElementById(`oos_${orderId}_${index}`);
+            if (checkbox && checkbox.checked) {
+                itemPrices[input.getAttribute('data-item-name')] = -1;
+            } else {
+                if (!input.value.trim()) missing = true;
+                else itemPrices[input.getAttribute('data-item-name')] = parseFloat(input.value);
+            }
         });
-        if(missing) { alert("Please complete all pricing configurations!"); return; }
+
+        if (missing) { alert("Please complete pricing allocations or mark as Out of Stock!"); return; }
 
         const btn = document.getElementById(`btn_${orderId}`);
-        btn.disabled = true; btn.innerText = "Transmitting Invoice...";
+        btn.disabled = true; btn.innerText = "Generating & Transmitting PDF Invoice...";
 
         try {
             const res = await fetch(`${CORE_API}/admin/orders/${orderId}/finalize`, {
@@ -145,21 +298,40 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ itemPrices })
             });
-            if((await res.json()).success) { alert("Dispatched over WhatsApp!"); fetchAllLiveOrders(); }
-        } catch(e) { alert("Error connecting to live environment server."); btn.disabled = false; }
+            const data = await res.json();
+            if (data.success) {
+                alert("Success! PDF compiled cleanly and forwarded over WhatsApp.");
+                fetchAllLiveOrders();
+            } else {
+                alert("Compilation failure: " + data.message);
+                btn.disabled = false; btn.innerText = "Compile & Send Invoice";
+            }
+        } catch(e) {
+            alert("Error sending transmission request.");
+            btn.disabled = false; btn.innerText = "Compile & Send Invoice";
+        }
     }
 
     async function updatePaymentState(orderId, nextState) {
-        await fetch(`${CORE_API}/admin/orders/${orderId}/payment`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentStatus: nextState })
-        });
-        fetchAllLiveOrders();
+        try {
+            const res = await fetch(`${CORE_API}/admin/orders/${orderId}/payment`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paymentStatus: nextState })
+            });
+            const data = await res.json();
+            if (data.success) {
+                fetchAllLiveOrders();
+            } else {
+                alert("Server error shifting status: " + data.message);
+            }
+        } catch(e) {
+            alert("Network communications failure.");
+        }
     }
 
     async function deleteOrderRecord(orderId) {
-        if(confirm("Permanently drop this checkout entry?")) {
+        if (confirm("Permanently remove this entry row from records?")) {
             await fetch(`${CORE_API}/admin/orders/${orderId}`, { method: 'DELETE' });
             fetchAllLiveOrders();
         }
