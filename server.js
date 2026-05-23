@@ -13,12 +13,23 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ====================================================================
+// AUTOMATED RUNTIME CHROMIUM ENGINE INSTALLATION FOR CLOUD INSTANCES
+// ====================================================================
 const localCacheDir = '/opt/render/.cache/puppeteer';
 console.log("🔍 Checking hosting environment browser path configuration...");
 
 try {
     if (!fs.existsSync(localCacheDir) || fs.readdirSync(localCacheDir).length === 0) {
-        shell.exec('npx puppeteer browsers install chrome');
+        console.log("⚠️ Chromium binaries missing from cloud engine cache layers.");
+        console.log("🛠️ Initializing background browser engine downloading cycle...");
+        if (shell.exec('npx puppeteer browsers install chrome').code !== 0) {
+            console.error("❌ Programmatic browser component installation encountered an error.");
+        } else {
+            console.log("🎯 Chromium core binaries downloaded successfully!");
+        }
+    } else {
+        console.log("✅ Cached chromium binaries confirmed.");
     }
 } catch (err) {
     console.error("⚠️ Runtime file check caution:", err.message);
@@ -59,6 +70,9 @@ const getPuppeteerConfig = () => {
     return config;
 };
 
+// ====================================================================
+// DATABASE & WHATSAPP ENGINE INITIALIZATION
+// ====================================================================
 const targetDatabaseURI = process.env.MONGODB_URI || process.env.MONGO_URI;
 if (targetDatabaseURI) {
     mongoose.connect(targetDatabaseURI);
@@ -79,6 +93,9 @@ whatsappClient.on('ready', () => {
 
 whatsappClient.initialize();
 
+// ====================================================================
+// API ROUTE GATEWAYS
+// ====================================================================
 app.get('/', (req, res) => res.send('Sai Bhavani Engine Operating Normally.'));
 
 app.post('/api/orders', async (req, res) => {
@@ -266,13 +283,13 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
             throw new Error("System printed PDF component missing from asset disk layers.");
         }
 
+        // Returns clear success object wrapper to matches dashboard structure perfectly
         return res.json({ success: true, order });
     } catch(err) {
         return res.status(500).json({ success: false, error: err.message });
     }
 });
 
-// Locate or replace the payment PATCH API route in your server.js file:
 app.patch('/api/admin/orders/:id/payment', async (req, res) => {
     try {
         const { paymentStatus } = req.body;
@@ -280,7 +297,7 @@ app.patch('/api/admin/orders/:id/payment', async (req, res) => {
         // Validation check to accept our new Cash and Online configurations cleanly
         const validStatuses = ['Unpaid', 'Paid Online', 'Paid Cash'];
         if (!validStatuses.includes(paymentStatus)) {
-            return res.status(400).json({ success: false, message: "Invalid payment metric configuration." });
+            return res.status(400).json({ success: false, error: "Invalid payment metric configuration." });
         }
 
         const order = await Order.findByIdAndUpdate(
@@ -289,7 +306,7 @@ app.patch('/api/admin/orders/:id/payment', async (req, res) => {
             { new: true }
         );
 
-        if (!order) return res.status(404).json({ success: false, message: "Order record not found." });
+        if (!order) return res.status(404).json({ success: false, error: "Order record not found." });
         return res.json({ success: true, order });
     } catch(err) {
         return res.status(500).json({ success: false, error: err.message });
