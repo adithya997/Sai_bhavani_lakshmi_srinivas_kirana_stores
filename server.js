@@ -84,8 +84,14 @@ const whatsappClient = new Client({
     puppeteer: getPuppeteerConfig()
 });
 
+// ====================================================================
+// CLEAN QR CODE LOGS FOR CLOUD INSTANCES
+// ====================================================================
 whatsappClient.on('qr', (qr) => {
-    qrcodeTerminal.generate(qr, { small: true });
+    console.log("\n=================================================================");
+    console.log("✨ WHATSAPP LINK REQUEST GENERATED! COPY THE LINK BELOW: ✨");
+    console.log(`https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(qr)}`);
+    console.log("=================================================================\n");
 });
 
 whatsappClient.on('ready', () => {
