@@ -87,6 +87,19 @@ const whatsappClient = new Client({
 // ====================================================================
 // CLEAN QR CODE LOGS FOR CLOUD INSTANCES
 // ====================================================================
+const targetDatabaseURI = process.env.MONGODB_URI || process.env.MONGO_URI;
+if (targetDatabaseURI) {
+    mongoose.connect(targetDatabaseURI)
+        .then(() => console.log("✅ MongoDB Connected"))
+        .catch(err => console.error("❌ MongoDB Connection Error:", err));
+}
+
+const whatsappClient = new Client({
+    authStrategy: new LocalAuth(),
+    puppeteer: getPuppeteerConfig()
+});
+
+// Clean clickable QR Code Generation Links
 whatsappClient.on('qr', (qr) => {
     console.log("\n=================================================================");
     console.log("✨ WHATSAPP LINK REQUEST GENERATED! COPY THE LINK BELOW: ✨");
@@ -98,7 +111,11 @@ whatsappClient.on('ready', () => {
     console.log('🚀 WhatsApp Engine Connected Successfully!');
 });
 
-whatsappClient.initialize();
+// Safe initialization wrapper to intercept 'auth timeout' rejections cleanly
+whatsappClient.initialize().catch(err => {
+    console.log("\n⚠️ WhatsApp Initialization Paused or Timed Out.");
+    console.log(`Reason: ${err.message}. Restarting engine or waiting for next deployment...`);
+});
 
 // ====================================================================
 // API ROUTE GATEWAYS
