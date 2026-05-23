@@ -76,18 +76,6 @@ const getPuppeteerConfig = () => {
 // ====================================================================
 const targetDatabaseURI = process.env.MONGODB_URI || process.env.MONGO_URI;
 if (targetDatabaseURI) {
-    mongoose.connect(targetDatabaseURI);
-}
-
-const whatsappClient = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: getPuppeteerConfig()
-});
-
-// ====================================================================
-// CLEAN QR CODE LOGS FOR CLOUD INSTANCES
-// ====================================================================
-if (targetDatabaseURI) {
     mongoose.connect(targetDatabaseURI)
         .then(() => console.log("✅ MongoDB Connected"))
         .catch(err => console.error("❌ MongoDB Connection Error:", err));
