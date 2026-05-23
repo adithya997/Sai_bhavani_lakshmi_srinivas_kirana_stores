@@ -72,7 +72,7 @@ const getPuppeteerConfig = () => {
 };
 
 // ====================================================================
-// DATABASE & WHATSAPP ENGINE INITIALIZATION
+// DATABASE & WHATSAPP ENGINE INITIALIZATION (PHONE PAIRING METHOD)
 // ====================================================================
 const targetDatabaseURI = process.env.MONGODB_URI || process.env.MONGO_URI;
 if (targetDatabaseURI) {
@@ -87,20 +87,42 @@ const whatsappClient = new Client({
     puppeteer: getPuppeteerConfig()
 });
 
-// Clean clickable QR Code Generation Links
+// Disable QR generation logs entirely since we are using Phone Pairing
 whatsappClient.on('qr', (qr) => {
-    console.log("\n=================================================================");
-    console.log("✨ WHATSAPP LINK REQUEST GENERATED! COPY THE LINK BELOW: ✨");
-    console.log(`https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(qr)}`);
-    console.log("=================================================================\n");
+    // QR codes bypassed!
 });
 
 whatsappClient.on('ready', () => {
     console.log('🚀 WhatsApp Engine Connected Successfully!');
 });
 
-// Safe initialization wrapper to intercept 'auth timeout' rejections cleanly
-whatsappClient.initialize().catch(err => {
+// Initialize with a hook to trigger Phone Number pairing code output
+whatsappClient.initialize().then(async () => {
+    console.log("⏳ Initializing browser session context...");
+
+    // Ensure the client has a split second to check if a saved session already exists
+    setTimeout(async () => {
+        if (whatsappClient.info) {
+            console.log("✅ Existing active session recovered. Skipping pairing generation.");
+            return;
+        }
+
+        try {
+            // ⚠️ REPLACE THIS WITH YOUR SHOP'S WHATSAPP MOBILE NUMBER
+            const myPhoneNumber = '918885290420';
+
+            console.log(`\n=================================================================`);
+            console.log(`📱 REQUESTING PAIRING CODE FOR NUMBER: ${myPhoneNumber}`);
+
+            const pairingCode = await whatsappClient.requestPairingCode(myPhoneNumber);
+
+            console.log(`✨ YOUR WHATSAPP PAIRING CODE IS: ${pairingCode} ✨`);
+            console.log(`=================================================================\n`);
+        } catch (pairErr) {
+            console.log("ℹ️ Phone pairing skipped or session already established dynamically.");
+        }
+    }, 5000);
+}).catch(err => {
     console.log("\n⚠️ WhatsApp Initialization Paused or Timed Out.");
     console.log(`Reason: ${err.message}. Restarting engine or waiting for next deployment...`);
 });
