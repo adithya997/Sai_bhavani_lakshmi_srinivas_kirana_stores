@@ -72,7 +72,7 @@ const getPuppeteerConfig = () => {
 };
 
 // ====================================================================
-// DATABASE & WHATSAPP ENGINE INITIALIZATION (PHONE PAIRING METHOD)
+// DATABASE & WHATSAPP ENGINE INITIALIZATION (MEMORY-OPTIMIZED)
 // ====================================================================
 const targetDatabaseURI = process.env.MONGODB_URI || process.env.MONGO_URI;
 if (targetDatabaseURI) {
@@ -81,10 +81,19 @@ if (targetDatabaseURI) {
         .catch(err => console.error("❌ MongoDB Connection Error:", err));
 }
 
+// Inject ultra-lightweight flags to safeguard Render's RAM limits
+const optimizedPuppeteer = getPuppeteerConfig();
+optimizedPuppeteer.args.push(
+    '--disable-extensions',
+    '--no-first-run',
+    '--no-zygote',
+    '--single-process' // Prevents memory spikes on cloud containers
+);
+
 const whatsappClient = new Client({
     authStrategy: new LocalAuth(),
-    authTimeoutMs: 100000,
-    puppeteer: getPuppeteerConfig()
+    authTimeoutMs: 120000, // Raised to 2 minutes to support relaxed code typing
+    puppeteer: optimizedPuppeteer
 });
 
 // Disable QR generation logs entirely since we are using Phone Pairing
@@ -96,11 +105,11 @@ whatsappClient.on('ready', () => {
     console.log('🚀 WhatsApp Engine Connected Successfully!');
 });
 
-// Initialize with a hook to trigger Phone Number pairing code output
+// Initialize with a 15-second warm-up delay to prevent system overload
 whatsappClient.initialize().then(async () => {
     console.log("⏳ Initializing browser session context...");
 
-    // Ensure the client has a split second to check if a saved session already exists
+    // 15-second timeout allowing Express and Mongoose to settle quietly first
     setTimeout(async () => {
         if (whatsappClient.info) {
             console.log("✅ Existing active session recovered. Skipping pairing generation.");
@@ -108,8 +117,7 @@ whatsappClient.initialize().then(async () => {
         }
 
         try {
-            // ⚠️ REPLACE THIS WITH YOUR SHOP'S WHATSAPP MOBILE NUMBER
-            const myPhoneNumber = '918885290420';
+            const myPhoneNumber = '919849075576';
 
             console.log(`\n=================================================================`);
             console.log(`📱 REQUESTING PAIRING CODE FOR NUMBER: ${myPhoneNumber}`);
@@ -119,9 +127,9 @@ whatsappClient.initialize().then(async () => {
             console.log(`✨ YOUR WHATSAPP PAIRING CODE IS: ${pairingCode} ✨`);
             console.log(`=================================================================\n`);
         } catch (pairErr) {
-            console.log("ℹ️ Phone pairing skipped or session already established dynamically.");
+            console.log("ℹ️ Phone pairing skipped or session already established dynamically:", pairErr.message);
         }
-    }, 5000);
+    }, 15000);
 }).catch(err => {
     console.log("\n⚠️ WhatsApp Initialization Paused or Timed Out.");
     console.log(`Reason: ${err.message}. Restarting engine or waiting for next deployment...`);
@@ -235,7 +243,6 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         // Tabular Items Rendering Engine
         doc.fillColor('#334155');
         processedItems.forEach(item => {
-            // Prevent text overflows onto missing target page segments
             if (doc.y > 740) { doc.addPage(); doc.moveTo(40, 40); }
 
             currentY = doc.y;
@@ -298,7 +305,6 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         // ====================================================================
         // STABLE, STAGE-SAFE WHATSAPP DELIVERY ENGINE
         // ====================================================================
-        // Clean and refine phone structure format safely
         let refinedPhone = order.customer.phone.replace(/\D/g, '');
         if (refinedPhone.length === 10) refinedPhone = '91' + refinedPhone;
 
@@ -307,7 +313,6 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         if (fs.existsSync(localTargetPdfPath)) {
             const mediaVectorInstance = MessageMedia.fromFilePath(localTargetPdfPath);
 
-            // CRITICAL SAFEGUARD: Block execution if client runtime properties aren't loaded yet
             if (!whatsappClient || !whatsappClient.info) {
                 throw new Error("WhatsApp connection engine is cold-booting. Please wait 10 seconds and try again.");
             }
