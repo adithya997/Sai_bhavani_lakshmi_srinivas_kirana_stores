@@ -87,7 +87,6 @@ const whatsappClient = new Client({
 // ====================================================================
 // CLEAN QR CODE LOGS FOR CLOUD INSTANCES
 // ====================================================================
-const targetDatabaseURI = process.env.MONGODB_URI || process.env.MONGO_URI;
 if (targetDatabaseURI) {
     mongoose.connect(targetDatabaseURI)
         .then(() => console.log("✅ MongoDB Connected"))
