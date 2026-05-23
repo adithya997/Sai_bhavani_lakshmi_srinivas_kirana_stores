@@ -4,6 +4,7 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const shell = require('shelljs');
+const PDFDocument = require('pdfkit'); // Core native PDF compiler implementation
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcodeTerminal = require('qrcode-terminal');
 const Order = require('./src/models/Order');
@@ -120,43 +121,24 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         if (!order) return res.status(404).json({ success: false, message: 'Order reference missing' });
 
         let grandSum = 0;
-        let invoiceRowsHtml = '';
+        const processedItems = [];
 
         order.items.forEach(item => {
             const configuredRate = parseFloat(itemPrices[item.productName]);
             item.price = configuredRate;
 
-            let rowRateDisplay = `Rs. ${configuredRate.toFixed(2)}`;
-            let rowSubtotal = 0;
-            let displaySubtotal = '';
-
-            if (configuredRate === -1) {
-                rowRateDisplay = `<span style="color:#dc2626; font-weight:bold;">Not Available</span>`;
-                displaySubtotal = 'Rs. 0.00';
-                item.subtotal = 0;
-            } else {
+            let subtotal = 0;
+            if (configuredRate !== -1) {
                 const standardUnit = item.unit.toLowerCase().trim();
                 if (standardUnit === 'gram' || standardUnit === 'gms' || standardUnit === 'ml' || standardUnit === 'mls') {
-                    rowSubtotal = (item.quantity / 1000) * configuredRate;
+                    subtotal = (item.quantity / 1000) * configuredRate;
                 } else {
-                    rowSubtotal = item.quantity * configuredRate;
+                    subtotal = item.quantity * configuredRate;
                 }
-                item.subtotal = rowSubtotal;
-                grandSum += rowSubtotal;
-                displaySubtotal = `Rs. ${rowSubtotal.toFixed(2)}`;
+                grandSum += subtotal;
             }
-
-            invoiceRowsHtml += `
-                <tr style="border-bottom: 1px solid #e2e8f0;">
-                    <td style="padding: 10px; font-size: 12px; color: #334155;">
-                        <strong>${item.productName}</strong>
-                        ${item.itemComment ? `<br><span style="font-size:10px; color:#0284c7; font-style:italic;">Brand: ${item.itemComment}</span>` : ''}
-                    </td>
-                    <td style="padding: 10px; font-size: 12px; color: #334155; text-align: center;">${item.quantity} ${item.unit}</td>
-                    <td style="padding: 10px; font-size: 12px; color: #334155; text-align: right;">${rowRateDisplay}</td>
-                    <td style="padding: 10px; font-size: 12px; color: #1e293b; font-weight: bold; text-align: right;">${displaySubtotal}</td>
-                </tr>
-            `;
+            item.subtotal = subtotal;
+            processedItems.push(item);
         });
 
         order.totalAmount = Math.round(grandSum * 100) / 100;
@@ -169,100 +151,111 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         const deepLinkUrl = `upi://pay?pa=${upiId}&pn=${merchantName}&am=${order.totalAmount.toFixed(2)}&cu=INR`;
         const phonePeFallbackUrl = `https://phon.pe/pay?pa=${upiId}&pn=${merchantName}&am=${order.totalAmount.toFixed(2)}&cu=INR`;
 
-        // Generate QR code engine source string via standard Google APIs
+        // Generate dynamic QR code string matrix via API
         const qrChartUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(deepLinkUrl)}`;
-
-        // HTML Markup Template to print into PDF document via Puppeteer
-        const fullInvoiceHtmlTemplate = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <style>
-                body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; margin: 30px; color: #334155; background-color: #fff; }
-                .header { text-align: center; border-bottom: 3px double #e2e8f0; padding-bottom: 12px; margin-bottom: 20px; }
-                .shop-title { font-size: 18px; font-weight: bold; color: #0f172a; margin: 0; }
-                .shop-subtitle { font-size: 11px; color: #64748b; font-weight: bold; margin-top: 3px; text-transform: uppercase; }
-                .meta-table { width: 100%; margin-bottom: 20px; font-size: 12px; }
-                .items-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-                .items-table th { background-color: #f1f5f9; color: #475569; font-weight: bold; font-size: 11px; text-transform: uppercase; padding: 10px; border-bottom: 2px solid #cbd5e1; }
-                .total-box { float: right; width: 40%; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f8fafc; padding: 12px; text-align: right; margin-bottom: 20px; }
-                .payment-section { clear: both; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; background-color: #fff; margin-top: 30px; display: flex; align-items: center; justify-content: space-between; }
-                .payment-instructions { font-size: 11px; color: #475569; width: 60%; line-height: 1.6; }
-                .qr-container { text-align: center; width: 35%; }
-                .qr-img { border: 1px solid #e2e8f0; padding: 4px; border-radius: 6px; }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <div class="shop-title">Sai Bhavani Lakshmi Srinivasa Kirana Stores (Battani Shop)</div>
-                <div class="shop-subtitle">Tax Invoice / వస్తువుల ధరల బిల్లు</div>
-            </div>
-
-            <table class="meta-table">
-                <tr>
-                    <td><strong>Customer Name / పేరు:</strong> ${order.customer.name}</td>
-                    <td style="text-align: right;"><strong>Date / తేదీ:</strong> ${new Date().toLocaleDateString('en-IN')}</td>
-                </tr>
-                <tr>
-                    <td><strong>Phone / ఫోన్ నంబర్:</strong> ${order.customer.phone}</td>
-                    <td style="text-align: right;"><strong>Status:</strong> Packing Completed / ప్యాకింగ్ పూర్తయినది</td>
-                </tr>
-            </table>
-
-            <table class="items-table">
-                <thead>
-                    <tr>
-                        <th style="text-align: left;">Item Description / వస్తువు</th>
-                        <th style="text-align: center;">Qty / పరిమాణం</th>
-                        <th style="text-align: right;">Rate per Unit / ధర</th>
-                        <th style="text-align: right;">Subtotal / మొత్తం</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${invoiceRowsHtml}
-                </tbody>
-            </table>
-
-            <div class="total-box">
-                <span style="font-size: 11px; font-weight: bold; color: #64748b; text-transform: uppercase;">Grand Total Amount / మొత్తం బిల్లు:</span><br>
-                <span style="font-size: 20px; font-weight: 900; color: #0f172a;">Rs. ${order.totalAmount.toFixed(2)}</span>
-            </div>
-
-            <div class="payment-section" style="display: block;">
-                <div style="float: left; width: 60%; font-size: 11px; color: #475569; line-height: 1.5;">
-                    <h4 style="margin: 0 0 5px 0; color: #0f172a; font-size: 12px;">Payment Instructions / చెల్లింపు వివరాలు:</h4>
-                    <p style="margin: 0 0 8px 0;"><strong>English:</strong> Please scan the attached QR code to pay using any active UPI application (PhonePe, GooglePay, Paytm). Alternatively, you can settle this bill at the shop counter during collection.</p>
-                    <p style="margin: 0;"><strong>తెలుగు:</strong> పక్కన ఉన్న QR కోడ్‌ని స్కాన్ చేసి ఫోన్‌పే, గూగుల్‌పే లేదా పేటీఎం ద్వారా సులభంగా పేమెంట్ చేయవచ్చు. లేదా మీరు వస్తువులను తీసుకునే సమయంలో దుకాణం వద్ద నగదు రూపంలో చెల్లించవచ్చు.</p>
-                    <p style="margin-top: 10px; font-weight: bold; color: #1e1b4b;">UPI ID: ${upiId}</p>
-                </div>
-                <div style="float: right; width: 35%; text-align: center;">
-                    <img src="${qrChartUrl}" class="qr-img" width="120" height="120" alt="Payment QR"><br>
-                    <span style="font-size: 10px; font-weight: bold; color: #64748b; display: block; margin-top: 4px;">SCAN & PAY / స్కాన్ చేసి పేమెంట్ చేయండి</span>
-                </div>
-                <div style="clear: both;"></div>
-            </div>
-        </body>
-        </html>
-        `;
-
-        // Compiling HTML payload directly into a raw PDF stream using the running Puppeteer instance
-        const browser = whatsappClient.puppeteer;
-        const page = await browser.newPage();
-        await page.setContent(fullInvoiceHtmlTemplate, { waitUntil: 'networkidle0' });
 
         const tempPdfFileName = `Invoice_${order._id}.pdf`;
         const localTargetPdfPath = path.join(__dirname, tempPdfFileName);
 
-        await page.pdf({
-            path: localTargetPdfPath,
-            format: 'A4',
-            printBackground: true,
-            margin: { top: '20px', bottom: '20px', left: '20px', right: '20px' }
-        });
-        await page.close();
+        // ====================================================================
+        // MEMORY-SAFE NATIVE PDF GENERATION VIA STREAM BUFFERS
+        // ====================================================================
+        const doc = new PDFDocument({ margin: 40, size: 'A4' });
+        const writeStream = fs.createWriteStream(localTargetPdfPath);
+        doc.pipe(writeStream);
 
-        // Dispatch text payload containing PhonePe deep link action handlers
+        // Check and register font if hosted in Render's file directory (for structural safety)
+        const fontPath = path.join(__dirname, '.fonts', 'NotoSansTe.ttf');
+        if (fs.existsSync(fontPath)) {
+            doc.registerFont('CustomUnicode', fontPath);
+            doc.font('CustomUnicode');
+        } else {
+            doc.font('Helvetica');
+        }
+
+        // Invoice Header
+        doc.fillColor('#0f172a').fontSize(15).text('Sai Bhavani Lakshmi Srinivasa Kirana Stores (Battani Shop)', { align: 'center' });
+        doc.fontSize(10).fillColor('#64748b').text('Tax Invoice / వస్తువుల ధరల బిల్లు', { align: 'center' }).moveDown(1.5);
+
+        // Metadata block configuration
+        let currentY = doc.y;
+        doc.fillColor('#334155').fontSize(10);
+        doc.text(`Customer Name / పేరు: ${order.customer.name}`, 40, currentY);
+        doc.text(`Date / తేదీ: ${new Date().toLocaleDateString('en-IN')}`, 380, currentY, { align: 'right', width: 170 });
+
+        doc.text(`Phone / ఫోన్ నంబర్: ${order.customer.phone}`, 40, currentY + 14);
+        doc.text(`Status: Packing Completed / ప్యాకింగ్ పూర్తయినది`, 380, currentY + 14, { align: 'right', width: 170 }).moveDown(2);
+
+        // Structural Divider Line
+        doc.moveTo(40, doc.y).lineTo(550, doc.y).strokeColor('#cbd5e1').stroke().moveDown(1);
+
+        // Table Header Layout Matrix
+        currentY = doc.y;
+        doc.fillColor('#475569');
+        doc.text('Item Description / వస్తువు', 40, currentY, { width: 220 });
+        doc.text('Qty / పరిమాణం', 260, currentY, { width: 90, align: 'center' });
+        doc.text('Rate / ధర', 360, currentY, { width: 80, align: 'right' });
+        doc.text('Subtotal / మొత్తం', 450, currentY, { width: 100, align: 'right' });
+        doc.moveDown(0.5);
+        doc.moveTo(40, doc.y).lineTo(550, doc.y).strokeColor('#e2e8f0').stroke().moveDown(0.8);
+
+        // Tabular Items Rendering Engine
+        doc.fillColor('#334155');
+        processedItems.forEach(item => {
+            // Prevent text overflows onto missing target page segments
+            if (doc.y > 740) { doc.addPage(); doc.moveTo(40, 40); }
+
+            currentY = doc.y;
+            const itemLabel = item.productName;
+            const qtyLabel = `${item.quantity} ${item.unit}`;
+            const rateLabel = item.price === -1 ? "Not Available" : `Rs. ${item.price.toFixed(2)}`;
+            const subtotalLabel = item.price === -1 ? "Rs. 0.00" : `Rs. ${item.subtotal.toFixed(2)}`;
+
+            doc.text(itemLabel, 40, currentY, { width: 220 });
+            if (item.itemComment) {
+                doc.fontSize(8.5).fillColor('#0284c7').text(`Brand: ${item.itemComment}`, 40, doc.y);
+                doc.fontSize(10).fillColor('#334155');
+            }
+
+            doc.text(qtyLabel, 260, currentY, { width: 90, align: 'center' });
+
+            if (item.price === -1) doc.fillColor('#dc2626');
+            doc.text(rateLabel, 360, currentY, { width: 80, align: 'right' });
+            doc.fillColor('#334155');
+
+            doc.text(subtotalLabel, 450, currentY, { width: 100, align: 'right' });
+
+            doc.moveDown(0.8);
+            doc.moveTo(40, doc.y).lineTo(550, doc.y).strokeColor('#f1f5f9').stroke().moveDown(0.5);
+        });
+
+        doc.moveDown(1);
+
+        // Grand Total Presentation Container
+        currentY = doc.y;
+        if (currentY > 700) { doc.addPage(); currentY = 40; }
+        doc.fillColor('#f8fafc').rect(320, currentY, 230, 45).fillAndStroke('#f8fafc', '#e2e8f0');
+        doc.fillColor('#475569').fontSize(9).text('GRAND TOTAL AMOUNT / మొత్తం బిల్లు:', 330, currentY + 8);
+        doc.fillColor('#0f172a').fontSize(15).text(`Rs. ${order.totalAmount.toFixed(2)}`, 330, currentY + 22, { bold: true });
+
+        // Instruction Blocks & Static Remote Payment Gateway Assets
+        doc.moveDown(3);
+        currentY = doc.y;
+        if (currentY > 680) { doc.addPage(); currentY = 40; }
+
+        doc.fillColor('#0f172a').fontSize(10).text('Payment Instructions / చెల్లింపు వివరాలు:', 40, currentY);
+        doc.fillColor('#475569').fontSize(8.5);
+        doc.text('English: Please scan the attached QR code to pay using any active UPI application (PhonePe, GooglePay, Paytm). Alternatively, you can settle this bill at the shop counter during collection.', 40, currentY + 15, { width: 320, lineGap: 2 });
+        doc.text('తెలుగు: పక్కన ఉన్న QR కోడ్‌ని స్కాన్ చేసి ఫోన్‌పే, గూగుల్‌పే లేదా పేటీఎం ద్వారా సులభంగా పేమెంట్ చేయవచ్చు. లేదా మీరు వస్తువులను తీసుకునే సమయంలో దుకాణం వద్ద నగదు రూపంలో చెల్లించవచ్చు.', 40, doc.y + 6, { width: 320, lineGap: 2 });
+        doc.fillColor('#1e1b4b').text(`UPI ID: ${upiId}`, 40, doc.y + 6, { bold: true });
+
+        // Finalize writing operations to the stream
+        doc.end();
+
+        // Lock file thread and monitor output event before initializing WhatsApp delivery pipeline
+        await new Promise((resolve) => writeStream.on('finish', resolve));
+
+        // Dispatch text summary text containing structural deep link configurations
         let itemsTextSummary = `*Sai Bhavani Lakshmi Srinivasa Kirana Stores (Battani Shop)*\n\n`;
         itemsTextSummary += `Hello *${order.customer.name}*, your order packing details have been calculated.\n`;
         itemsTextSummary += `💰 Total Bill Amount: *Rs. ${order.totalAmount.toFixed(2)}*\n\n`;
@@ -272,18 +265,16 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         let refinedPhone = order.customer.phone.replace(/\D/g, '');
         if (refinedPhone.length === 10) refinedPhone = '91' + refinedPhone;
 
-        // Load document from file system and safely transmit via WhatsApp core media buffers
         if (fs.existsSync(localTargetPdfPath)) {
             const mediaVectorInstance = MessageMedia.fromFilePath(localTargetPdfPath);
             await whatsappClient.sendMessage(`${refinedPhone}@c.us`, mediaVectorInstance, { caption: itemsTextSummary });
 
-            // Clean up temporary local system file
+            // File system resource clean up
             fs.unlinkSync(localTargetPdfPath);
         } else {
             throw new Error("System printed PDF component missing from asset disk layers.");
         }
 
-        // Returns clear success object wrapper to matches dashboard structure perfectly
         return res.json({ success: true, order });
     } catch(err) {
         return res.status(500).json({ success: false, error: err.message });
@@ -293,8 +284,6 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
 app.patch('/api/admin/orders/:id/payment', async (req, res) => {
     try {
         const { paymentStatus } = req.body;
-
-        // Validation check to accept our new Cash and Online configurations cleanly
         const validStatuses = ['Unpaid', 'Paid Online', 'Paid Cash'];
         if (!validStatuses.includes(paymentStatus)) {
             return res.status(400).json({ success: false, error: "Invalid payment metric configuration." });
