@@ -80,7 +80,7 @@ function initializeWhatsAppEngine() {
         // Forces WhatsApp to recognize this cloud container as a permanent constant client
         authStrategy: new RemoteAuth({
             store: sessionDbStore,
-            backupSyncIntervalMs: 30000, // Faster token sync to save the session quickly
+            backupSyncIntervalMs: 60000, // Fixed! Changed from 30000 to 60000 to satisfy the 1-minute safety limit
             clientId: 'sai_bhavani_fixed_shop_session'
         }),
         authTimeoutMs: 180000, // Extends timeout for slower cloud boots
