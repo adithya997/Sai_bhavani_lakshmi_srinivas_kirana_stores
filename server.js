@@ -5,9 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const shell = require('shelljs');
 const PDFDocument = require('pdfkit'); // Core native PDF compiler implementation
-const { Client, RemoteAuth, MessageMedia } = require('whatsapp-web.js');
-const { MongoStore } = require('wwebjs-mongo');
-const qrcodeTerminal = require('qrcode-terminal');
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const Order = require('./src/models/Order');
 require('dotenv').config();
 
@@ -16,17 +14,16 @@ app.use(cors());
 app.use(express.json());
 
 // ====================================================================
-// AUTOMATED RUNTIME CHROMIUM ENGINE INSTALLATION FOR CLOUD INSTANCES
+// AUTOMATED CHROMIUM ENGINE INSTALLATION FOR RAILWAY
 // ====================================================================
-const localCacheDir = '/opt/render/.cache/puppeteer';
+const localCacheDir = path.join(__dirname, '.cache', 'puppeteer');
 console.log("🔍 Checking hosting environment browser path configuration...");
 
 try {
     if (!fs.existsSync(localCacheDir) || fs.readdirSync(localCacheDir).length === 0) {
-        console.log("⚠️ Chromium binaries missing from cloud engine cache layers.");
-        console.log("🛠️ Initializing background browser engine downloading cycle...");
+        console.log("⚠️ Chromium binaries missing. Initializing download...");
         if (shell.exec('npx puppeteer browsers install chrome').code !== 0) {
-            console.error("❌ Programmatic browser component installation encountered an error.");
+            console.error("❌ Browser component installation encountered an error.");
         } else {
             console.log("🎯 Chromium core binaries downloaded successfully!");
         }
@@ -40,9 +37,18 @@ try {
 const getPuppeteerConfig = () => {
     const config = {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--disable-extensions',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process' // Safeguards RAM thresholds
+        ]
     };
-    const standardLinuxPaths = ['/usr/bin/google-chrome-stable', '/usr/bin/chromium-browser', '/usr/bin/chromium'];
+
     try {
         if (fs.existsSync(localCacheDir)) {
             const searchForExecutable = (dir) => {
@@ -59,100 +65,65 @@ const getPuppeteerConfig = () => {
                 return null;
             };
             const exactLocatedPath = searchForExecutable(localCacheDir);
-            if (exactLocatedPath) standardLinuxPaths.unshift(exactLocatedPath);
+            if (exactLocatedPath) config.executablePath = exactLocatedPath;
         }
-    } catch (e) {}
-
-    for (const binaryPath of standardLinuxPaths) {
-        if (fs.existsSync(binaryPath)) {
-            config.executablePath = binaryPath;
-            break;
-        }
+    } catch (e) {
+        console.log("Error finding executable path, falling back to defaults.");
     }
     return config;
 };
 
 // ====================================================================
-// DATABASE & WHATSAPP ENGINE INITIALIZATION (MONGO REMOTE AUTH)
+// DATABASE & WHATSAPP ENGINE INITIALIZATION (LOCAL AUTH ON RAILWAY)
 // ====================================================================
 const targetDatabaseURI = process.env.MONGODB_URI || process.env.MONGO_URI;
-
 if (targetDatabaseURI) {
     mongoose.connect(targetDatabaseURI)
-        .then(() => {
-            console.log("✅ MongoDB Connected Successfully");
-            initializeWhatsAppEngine(); // Start WhatsApp only AFTER database is fully ready
-        })
+        .then(() => console.log("✅ MongoDB Connected"))
         .catch(err => console.error("❌ MongoDB Connection Error:", err));
 }
 
-function initializeWhatsAppEngine() {
-    console.log("📦 Setting up MongoDB Remote Authentication Store...");
+const whatsappClient = new Client({
+    authStrategy: new LocalAuth({
+        dataPath: path.join(__dirname, '.wwebjs_auth') // Safe local persistent directory
+    }),
+    authTimeoutMs: 120000,
+    puppeteer: getPuppeteerConfig()
+});
 
-    // Wire up the remote session database vault
-    const sessionDbStore = new MongoStore({ mongoose: mongoose });
+whatsappClient.on('qr', (qr) => {
+    // QR codes bypassed for Phone Pairing!
+});
 
-    const optimizedPuppeteer = getPuppeteerConfig();
-    optimizedPuppeteer.args.push(
-        '--disable-extensions',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process'
-    );
+whatsappClient.on('ready', () => {
+    console.log('🚀 WhatsApp Engine Connected Successfully!');
+});
 
-    const whatsappClient = new Client({
-        authStrategy: new RemoteAuth({
-            store: sessionDbStore,
-            backupSyncIntervalMs: 60000, // Sync session tokens to Mongo every 60 seconds
-            clientId: 'sai_bhavani_shop_session'
-        }),
-        authTimeoutMs: 120000,
-        puppeteer: optimizedPuppeteer
-    });
+whatsappClient.initialize().then(async () => {
+    console.log("⏳ Initializing browser session context...");
 
-    // Make the client globally accessible to the express routes
-    app.set('whatsappClient', whatsappClient);
+    setTimeout(async () => {
+        if (whatsappClient.info) {
+            console.log("✅ Existing active session recovered from disk. Skipping pairing code.");
+            return;
+        }
 
-    whatsappClient.on('qr', (qr) => {
-        // QR codes bypassed for phone pairing!
-    });
+        try {
+            const myPhoneNumber = '919849075576';
+            console.log(`\n=================================================================`);
+            console.log(`📱 REQUESTING PAIRING CODE FOR NUMBER: ${myPhoneNumber}`);
 
-    whatsappClient.on('ready', () => {
-        console.log('🚀 WhatsApp Engine Connected Successfully!');
-    });
+            const pairingCode = await whatsappClient.requestPairingCode(myPhoneNumber);
 
-    // Save newly created authentication tokens straight to Mongo cluster
-    whatsappClient.on('remote_auth_success', () => {
-        console.log('✨ Session backup successfully synced to your cloud database vault!');
-    });
-
-    whatsappClient.initialize().then(async () => {
-        console.log("⏳ Initializing browser session context...");
-
-        setTimeout(async () => {
-            if (whatsappClient.info) {
-                console.log("✅ Existing active session recovered from MongoDB. Skipping pairing code.");
-                return;
-            }
-
-            try {
-                const myPhoneNumber = '919849075576';
-                console.log(`\n=================================================================`);
-                console.log(`📱 REQUESTING PAIRING CODE FOR NUMBER: ${myPhoneNumber}`);
-
-                const pairingCode = await whatsappClient.requestPairingCode(myPhoneNumber);
-
-                console.log(`✨ YOUR WHATSAPP PAIRING CODE IS: ${pairingCode} ✨`);
-                console.log(`=================================================================\n`);
-            } catch (pairErr) {
-                console.log("ℹ️ Phone pairing skipped or session already established dynamically.");
-            }
-        }, 15000);
-    }).catch(err => {
-        console.log("\n⚠️ WhatsApp Initialization Paused or Timed Out.");
-        console.log(`Reason: ${err.message}.`);
-    });
-}
+            console.log(`✨ YOUR WHATSAPP PAIRING CODE IS: ${pairingCode} ✨`);
+            console.log(`=================================================================\n`);
+        } catch (pairErr) {
+            console.log("ℹ️ Phone pairing skipped or session already established dynamically:", pairErr.message);
+        }
+    }, 15000);
+}).catch(err => {
+    console.log(`\n⚠️ WhatsApp Initialization Paused or Timed Out: ${err.message}`);
+});
 
 // ====================================================================
 // API ROUTE GATEWAYS
@@ -205,7 +176,6 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         order.status = 'Done';
         await order.save();
 
-        // UPI and Deep Link parameters
         const upiId = "8885290420@axl";
         const merchantName = encodeURIComponent("Sai Bhavani Kirana Stores");
         const phonePeFallbackUrl = `https://phon.pe/pay?pa=${upiId}&pn=${merchantName}&am=${order.totalAmount.toFixed(2)}&cu=INR`;
@@ -213,9 +183,6 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         const tempPdfFileName = `Invoice_${order._id}.pdf`;
         const localTargetPdfPath = path.join(__dirname, tempPdfFileName);
 
-        // ====================================================================
-        // MEMORY-SAFE NATIVE PDF GENERATION VIA STREAM BUFFERS
-        // ====================================================================
         const doc = new PDFDocument({ margin: 40, size: 'A4' });
         const writeStream = fs.createWriteStream(localTargetPdfPath);
         doc.pipe(writeStream);
@@ -302,7 +269,7 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         let itemsTextSummary = `*Sai Bhavani Lakshmi Srinivasa Kirana Stores (Battani Shop)*\n\n`;
         itemsTextSummary += `Hello *${order.customer.name}*, your order packing details have been calculated.\n`;
         itemsTextSummary += `💰 Total Bill Amount: *Rs. ${order.totalAmount.toFixed(2)}*\n\n`;
-        itemsTextSummary += `🔗 *Pay Instantly via any UPI App / ఇప్పుడే పేమెంట్ చేయడానికి కింద ఉన్న లింక్‌ని క్లిక్ చేయండి:* \n${phonePeFallbackUrl}\n\n`;
+        itemsTextSummary += `🔗 *Pay Instantly via any UPI App / ఇప్పుడే పేమెంట్ చేయడానికి కింద ఉన్న లింక్‌ని క్利క్ చేయండి:* \n${phonePeFallbackUrl}\n\n`;
         itemsTextSummary += `📥 _Your detailed digital invoice PDF file is attached below with standard per-unit pricing records._`;
 
         let refinedPhone = order.customer.phone.replace(/\D/g, '');
@@ -312,13 +279,12 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
 
         if (fs.existsSync(localTargetPdfPath)) {
             const mediaVectorInstance = MessageMedia.fromFilePath(localTargetPdfPath);
-            const activeWhatsappClient = app.get('whatsappClient');
 
-            if (!activeWhatsappClient || !activeWhatsappClient.info) {
+            if (!whatsappClient || !whatsappClient.info) {
                 throw new Error("WhatsApp connection engine is cold-booting. Please wait 15 seconds and try again.");
             }
 
-            await activeWhatsappClient.sendMessage(targetChatId, mediaVectorInstance, { caption: itemsTextSummary });
+            await whatsappClient.sendMessage(targetChatId, mediaVectorInstance, { caption: itemsTextSummary });
             fs.unlinkSync(localTargetPdfPath);
         } else {
             throw new Error("System printed PDF component missing from asset disk layers.");
