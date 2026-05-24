@@ -5,7 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const shell = require('shelljs');
 const PDFDocument = require('pdfkit'); // Core native PDF compiler implementation
-const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
+const { Client, RemoteAuth, MessageMedia } = require('whatsapp-web.js');
+const { MongoStore } = require('wwebjs-mongo');
 const qrcodeTerminal = require('qrcode-terminal');
 const Order = require('./src/models/Order');
 require('dotenv').config();
@@ -72,68 +73,86 @@ const getPuppeteerConfig = () => {
 };
 
 // ====================================================================
-// DATABASE & WHATSAPP ENGINE INITIALIZATION (MEMORY-OPTIMIZED)
+// DATABASE & WHATSAPP ENGINE INITIALIZATION (MONGO REMOTE AUTH)
 // ====================================================================
 const targetDatabaseURI = process.env.MONGODB_URI || process.env.MONGO_URI;
+
 if (targetDatabaseURI) {
     mongoose.connect(targetDatabaseURI)
-        .then(() => console.log("✅ MongoDB Connected"))
+        .then(() => {
+            console.log("✅ MongoDB Connected Successfully");
+            initializeWhatsAppEngine(); // Start WhatsApp only AFTER database is fully ready
+        })
         .catch(err => console.error("❌ MongoDB Connection Error:", err));
 }
 
-// Inject ultra-lightweight flags to safeguard Render's RAM limits
-const optimizedPuppeteer = getPuppeteerConfig();
-optimizedPuppeteer.args.push(
-    '--disable-extensions',
-    '--no-first-run',
-    '--no-zygote',
-    '--single-process' // Prevents memory spikes on cloud containers
-);
+function initializeWhatsAppEngine() {
+    console.log("📦 Setting up MongoDB Remote Authentication Store...");
 
-const whatsappClient = new Client({
-    authStrategy: new LocalAuth(),
-    authTimeoutMs: 120000, // Raised to 2 minutes to support relaxed code typing
-    puppeteer: optimizedPuppeteer
-});
+    // Wire up the remote session database vault
+    const sessionDbStore = new MongoStore({ mongoose: mongoose });
 
-// Disable QR generation logs entirely since we are using Phone Pairing
-whatsappClient.on('qr', (qr) => {
-    // QR codes bypassed!
-});
+    const optimizedPuppeteer = getPuppeteerConfig();
+    optimizedPuppeteer.args.push(
+        '--disable-extensions',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process'
+    );
 
-whatsappClient.on('ready', () => {
-    console.log('🚀 WhatsApp Engine Connected Successfully!');
-});
+    const whatsappClient = new Client({
+        authStrategy: new RemoteAuth({
+            store: sessionDbStore,
+            backupSyncIntervalMs: 60000, // Sync session tokens to Mongo every 60 seconds
+            clientId: 'sai_bhavani_shop_session'
+        }),
+        authTimeoutMs: 120000,
+        puppeteer: optimizedPuppeteer
+    });
 
-// Initialize with a 15-second warm-up delay to prevent system overload
-whatsappClient.initialize().then(async () => {
-    console.log("⏳ Initializing browser session context...");
+    // Make the client globally accessible to the express routes
+    app.set('whatsappClient', whatsappClient);
 
-    // 15-second timeout allowing Express and Mongoose to settle quietly first
-    setTimeout(async () => {
-        if (whatsappClient.info) {
-            console.log("✅ Existing active session recovered. Skipping pairing generation.");
-            return;
-        }
+    whatsappClient.on('qr', (qr) => {
+        // QR codes bypassed for phone pairing!
+    });
 
-        try {
-            const myPhoneNumber = '919849075576';
+    whatsappClient.on('ready', () => {
+        console.log('🚀 WhatsApp Engine Connected Successfully!');
+    });
 
-            console.log(`\n=================================================================`);
-            console.log(`📱 REQUESTING PAIRING CODE FOR NUMBER: ${myPhoneNumber}`);
+    // Save newly created authentication tokens straight to Mongo cluster
+    whatsappClient.on('remote_auth_success', () => {
+        console.log('✨ Session backup successfully synced to your cloud database vault!');
+    });
 
-            const pairingCode = await whatsappClient.requestPairingCode(myPhoneNumber);
+    whatsappClient.initialize().then(async () => {
+        console.log("⏳ Initializing browser session context...");
 
-            console.log(`✨ YOUR WHATSAPP PAIRING CODE IS: ${pairingCode} ✨`);
-            console.log(`=================================================================\n`);
-        } catch (pairErr) {
-            console.log("ℹ️ Phone pairing skipped or session already established dynamically:", pairErr.message);
-        }
-    }, 15000);
-}).catch(err => {
-    console.log("\n⚠️ WhatsApp Initialization Paused or Timed Out.");
-    console.log(`Reason: ${err.message}. Restarting engine or waiting for next deployment...`);
-});
+        setTimeout(async () => {
+            if (whatsappClient.info) {
+                console.log("✅ Existing active session recovered from MongoDB. Skipping pairing code.");
+                return;
+            }
+
+            try {
+                const myPhoneNumber = '919849075576';
+                console.log(`\n=================================================================`);
+                console.log(`📱 REQUESTING PAIRING CODE FOR NUMBER: ${myPhoneNumber}`);
+
+                const pairingCode = await whatsappClient.requestPairingCode(myPhoneNumber);
+
+                console.log(`✨ YOUR WHATSAPP PAIRING CODE IS: ${pairingCode} ✨`);
+                console.log(`=================================================================\n`);
+            } catch (pairErr) {
+                console.log("ℹ️ Phone pairing skipped or session already established dynamically.");
+            }
+        }, 15000);
+    }).catch(err => {
+        console.log("\n⚠️ WhatsApp Initialization Paused or Timed Out.");
+        console.log(`Reason: ${err.message}.`);
+    });
+}
 
 // ====================================================================
 // API ROUTE GATEWAYS
@@ -189,11 +208,7 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         // UPI and Deep Link parameters
         const upiId = "8885290420@axl";
         const merchantName = encodeURIComponent("Sai Bhavani Kirana Stores");
-        const deepLinkUrl = `upi://pay?pa=${upiId}&pn=${merchantName}&am=${order.totalAmount.toFixed(2)}&cu=INR`;
         const phonePeFallbackUrl = `https://phon.pe/pay?pa=${upiId}&pn=${merchantName}&am=${order.totalAmount.toFixed(2)}&cu=INR`;
-
-        // Generate dynamic QR code string matrix via API
-        const qrChartUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(deepLinkUrl)}`;
 
         const tempPdfFileName = `Invoice_${order._id}.pdf`;
         const localTargetPdfPath = path.join(__dirname, tempPdfFileName);
@@ -205,7 +220,6 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         const writeStream = fs.createWriteStream(localTargetPdfPath);
         doc.pipe(writeStream);
 
-        // Check and register font if hosted in Render's file directory (for structural safety)
         const fontPath = path.join(__dirname, '.fonts', 'NotoSansTe.ttf');
         if (fs.existsSync(fontPath)) {
             doc.registerFont('CustomUnicode', fontPath);
@@ -214,11 +228,9 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
             doc.font('Helvetica');
         }
 
-        // Invoice Header
         doc.fillColor('#0f172a').fontSize(15).text('Sai Bhavani Lakshmi Srinivasa Kirana Stores (Battani Shop)', { align: 'center' });
         doc.fontSize(10).fillColor('#64748b').text('Tax Invoice / వస్తువుల ధరల బిల్లు', { align: 'center' }).moveDown(1.5);
 
-        // Metadata block configuration
         let currentY = doc.y;
         doc.fillColor('#334155').fontSize(10);
         doc.text(`Customer Name / పేరు: ${order.customer.name}`, 40, currentY);
@@ -227,10 +239,8 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         doc.text(`Phone / ఫోన్ నంబర్: ${order.customer.phone}`, 40, currentY + 14);
         doc.text(`Status: Packing Completed / ప్యాకింగ్ పూర్తయినది`, 380, currentY + 14, { align: 'right', width: 170 }).moveDown(2);
 
-        // Structural Divider Line
         doc.moveTo(40, doc.y).lineTo(550, doc.y).strokeColor('#cbd5e1').stroke().moveDown(1);
 
-        // Table Header Layout Matrix
         currentY = doc.y;
         doc.fillColor('#475569');
         doc.text('Item Description / వస్తువు', 40, currentY, { width: 220 });
@@ -240,7 +250,6 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         doc.moveDown(0.5);
         doc.moveTo(40, doc.y).lineTo(550, doc.y).strokeColor('#e2e8f0').stroke().moveDown(0.8);
 
-        // Tabular Items Rendering Engine
         doc.fillColor('#334155');
         processedItems.forEach(item => {
             if (doc.y > 740) { doc.addPage(); doc.moveTo(40, 40); }
@@ -262,7 +271,6 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
             if (item.price === -1) doc.fillColor('#dc2626');
             doc.text(rateLabel, 360, currentY, { width: 80, align: 'right' });
             doc.fillColor('#334155');
-
             doc.text(subtotalLabel, 450, currentY, { width: 100, align: 'right' });
 
             doc.moveDown(0.8);
@@ -271,14 +279,12 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
 
         doc.moveDown(1);
 
-        // Grand Total Presentation Container
         currentY = doc.y;
         if (currentY > 700) { doc.addPage(); currentY = 40; }
         doc.fillColor('#f8fafc').rect(320, currentY, 230, 45).fillAndStroke('#f8fafc', '#e2e8f0');
         doc.fillColor('#475569').fontSize(9).text('GRAND TOTAL AMOUNT / మొత్తం బిల్లు:', 330, currentY + 8);
         doc.fillColor('#0f172a').fontSize(15).text(`Rs. ${order.totalAmount.toFixed(2)}`, 330, currentY + 22, { bold: true });
 
-        // Instruction Blocks & Static Remote Payment Gateway Assets
         doc.moveDown(3);
         currentY = doc.y;
         if (currentY > 680) { doc.addPage(); currentY = 40; }
@@ -289,22 +295,16 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         doc.text('తెలుగు: పక్కన ఉన్న QR కోడ్‌ని స్కాన్ చేసి ఫోన్‌పే, గూగుల్‌పే లేదా పేటీఎం ద్వారా సులభంగా పేమెంట్ చేయవచ్చు. లేదా మీరు వస్తువులను తీసుకునే సమయంలో దుకాణం వద్ద నగదు రూపంలో చెల్లించవచ్చు.', 40, doc.y + 6, { width: 320, lineGap: 2 });
         doc.fillColor('#1e1b4b').text(`UPI ID: ${upiId}`, 40, doc.y + 6, { bold: true });
 
-        // Finalize writing operations to the stream
         doc.end();
 
-        // Lock file thread and monitor output event before initializing WhatsApp delivery pipeline
         await new Promise((resolve) => writeStream.on('finish', resolve));
 
-        // Dispatch text summary text containing structural deep link configurations
         let itemsTextSummary = `*Sai Bhavani Lakshmi Srinivasa Kirana Stores (Battani Shop)*\n\n`;
         itemsTextSummary += `Hello *${order.customer.name}*, your order packing details have been calculated.\n`;
         itemsTextSummary += `💰 Total Bill Amount: *Rs. ${order.totalAmount.toFixed(2)}*\n\n`;
         itemsTextSummary += `🔗 *Pay Instantly via any UPI App / ఇప్పుడే పేమెంట్ చేయడానికి కింద ఉన్న లింక్‌ని క్లిక్ చేయండి:* \n${phonePeFallbackUrl}\n\n`;
         itemsTextSummary += `📥 _Your detailed digital invoice PDF file is attached below with standard per-unit pricing records._`;
 
-        // ====================================================================
-        // STABLE, STAGE-SAFE WHATSAPP DELIVERY ENGINE
-        // ====================================================================
         let refinedPhone = order.customer.phone.replace(/\D/g, '');
         if (refinedPhone.length === 10) refinedPhone = '91' + refinedPhone;
 
@@ -312,14 +312,13 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
 
         if (fs.existsSync(localTargetPdfPath)) {
             const mediaVectorInstance = MessageMedia.fromFilePath(localTargetPdfPath);
+            const activeWhatsappClient = app.get('whatsappClient');
 
-            if (!whatsappClient || !whatsappClient.info) {
-                throw new Error("WhatsApp connection engine is cold-booting. Please wait 10 seconds and try again.");
+            if (!activeWhatsappClient || !activeWhatsappClient.info) {
+                throw new Error("WhatsApp connection engine is cold-booting. Please wait 15 seconds and try again.");
             }
 
-            await whatsappClient.sendMessage(targetChatId, mediaVectorInstance, { caption: itemsTextSummary });
-
-            // File system resource clean up
+            await activeWhatsappClient.sendMessage(targetChatId, mediaVectorInstance, { caption: itemsTextSummary });
             fs.unlinkSync(localTargetPdfPath);
         } else {
             throw new Error("System printed PDF component missing from asset disk layers.");
