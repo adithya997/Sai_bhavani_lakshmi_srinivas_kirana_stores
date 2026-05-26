@@ -22,6 +22,7 @@ app.use(express.json());
 
 let sock = null;
 let isWhatsappReady = false;
+let pairingCodeRequested = false;
 
 // ============================================================
 // DATABASE CONNECTION
@@ -67,7 +68,7 @@ async function initializeWhatsApp() {
 
             const { connection, lastDisconnect, qr } = update;
 
-            if (qr) {
+            if (qr) if (qr && !pairingCodeRequested) {
 
                 const phoneNumber = '919849075576';
 
@@ -76,6 +77,7 @@ async function initializeWhatsApp() {
                     const code = await sock.requestPairingCode(phoneNumber.trim());
                     console.log(`================================================`);
                     console.log(`📱 YOUR WHATSAPP PAIRING CODE: ${code}`);
+                    pairingCodeRequested = true;
                     console.log(`================================================`);
 
                 } catch (err) {
@@ -85,13 +87,17 @@ async function initializeWhatsApp() {
             }
 
             if (connection === 'open') {
+
                 console.log('🚀 WhatsApp Engine Connected Successfully!');
+
                 isWhatsappReady = true;
+                pairingCodeRequested = false;
             }
 
             if (connection === 'close') {
 
                 isWhatsappReady = false;
+                pairingCodeRequested = false;
 
                 const shouldReconnect =
                     lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
