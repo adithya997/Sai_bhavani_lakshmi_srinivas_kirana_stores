@@ -57,7 +57,8 @@ async function initializeWhatsApp() {
             logger: P({ level: 'silent' }),
             browser: ['Sai Bhavani Kirana', 'Chrome', '1.0.0'],
             syncFullHistory: false,
-            markOnlineOnConnect: false
+            markOnlineOnConnect: false,
+            printQRInTerminal: false
         });
 
         sock.ev.on('creds.update', saveCreds);
@@ -72,8 +73,7 @@ async function initializeWhatsApp() {
 
                 try {
 
-                    const code = await sock.requestPairingCode(phoneNumber);
-
+                    const code = await sock.requestPairingCode(phoneNumber.trim());
                     console.log(`================================================`);
                     console.log(`📱 YOUR WHATSAPP PAIRING CODE: ${code}`);
                     console.log(`================================================`);
