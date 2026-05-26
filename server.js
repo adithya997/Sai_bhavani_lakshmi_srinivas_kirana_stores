@@ -52,6 +52,9 @@ const getPuppeteerConfig = () => {
             '--disable-accelerated-2d-canvas',
             '--disable-features=site-per-process',
             '--disable-software-rasterizer',
+            '--disable-background-timer-throttling',
+            '--disable-renderer-backgrounding',
+            '--disable-backgrounding-occluded-windows',
             '--proxy-server="direct://"',
             '--proxy-bypass-list=*'
         ]
@@ -91,7 +94,10 @@ function initializeWhatsAppEngine() {
             type: 'remote',
             remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1018.0-web.html'
         },
-        puppeteer: config
+        puppeteer: {
+            ...config,
+            protocolTimeout: 180000
+        }
     });
 
     app.set('whatsappClient', whatsappClient);
