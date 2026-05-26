@@ -7,6 +7,7 @@ const PDFDocument = require('pdfkit');
 const P = require('pino');
 const readline = require('readline');
 const qrcode = require('qrcode-terminal');
+const QRCode = require('qrcode');
 const {
     default: makeWASocket,
     useMultiFileAuthState,
@@ -69,11 +70,13 @@ async function initializeWhatsApp() {
 
             if (qr) {
 
-                console.log('📱 QR CODE GENERATED. Scan Below:\n');
+                const qrUrl =
+                    `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qr)}`;
 
-                qrcode.generate(qr, {
-                    small: true
-                });
+                console.log('================================================');
+                console.log('📱 OPEN THIS QR LINK IN BROWSER:');
+                console.log(qrUrl);
+                console.log('================================================');
             }
 
             if (connection === 'open') {
