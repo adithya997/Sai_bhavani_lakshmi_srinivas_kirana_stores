@@ -24,6 +24,7 @@ app.use(express.json());
 
 let sock = null;
 let isWhatsappReady = false;
+let isInitializing = false;
 // ============================================================
 // DATABASE CONNECTION
 // ============================================================
@@ -43,6 +44,13 @@ mongoose.connect(targetDatabaseURI)
 // ============================================================
 
 async function initializeWhatsApp() {
+
+    if (isInitializing) {
+        console.log('⚠️ WhatsApp initialization already running.');
+        return;
+    }
+
+    isInitializing = true;
 
     try {
 
@@ -84,13 +92,13 @@ async function initializeWhatsApp() {
                 console.log('🚀 WhatsApp Engine Connected Successfully!');
 
                 isWhatsappReady = true;
-                pairingCodeRequested = false;
+                isInitializing = false;
             }
 
             if (connection === 'close') {
 
                 isWhatsappReady = false;
-                pairingCodeRequested = false;
+                isInitializing = false;
 
                 const shouldReconnect =
                     lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
@@ -98,6 +106,9 @@ async function initializeWhatsApp() {
                 console.log('❌ WhatsApp disconnected. Reconnecting:', shouldReconnect);
 
                 if (shouldReconnect) {
+
+                    sock = null;
+
                     setTimeout(() => {
                         initializeWhatsApp();
                     }, 5000);
