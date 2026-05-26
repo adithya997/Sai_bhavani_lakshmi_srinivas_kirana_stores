@@ -50,6 +50,7 @@ const getPuppeteerConfig = () => {
             '--no-first-run',
             '--no-zygote',
             '--disable-accelerated-2d-canvas',
+            '--disable-features=site-per-process',
             '--proxy-server="direct://"',
             '--proxy-bypass-list=*'
         ]
@@ -81,10 +82,10 @@ function initializeWhatsAppEngine() {
         authStrategy: new RemoteAuth({
             store: sessionDbStore,
             backupSyncIntervalMs: 60000, // Fixed! Changed from 30000 to 60000 to satisfy the 1-minute safety limit
-            clientId: 'sai_bhavani_fixed_shop_session'
+            clientId: 'sai_bhavani_shop_session_v2'
         }),
         authTimeoutMs: 180000, // Extends timeout for slower cloud boots
-        qrMaxRetries: 3,
+        qrMaxRetries: 10,
         webVersionCache: {
             type: 'remote',
             remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1018.0-web.html'
@@ -144,7 +145,7 @@ function initializeWhatsAppEngine() {
                 console.log("ℹ️ Pairing skipped:", pairErr.message);
             }
 
-        }, 30000);
+        }, 60000);
     }).catch(err => {
         console.log(`\n⚠️ WhatsApp Initialization Paused: ${err.message}`);
     });
