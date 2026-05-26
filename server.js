@@ -6,6 +6,7 @@ const path = require('path');
 const PDFDocument = require('pdfkit');
 const P = require('pino');
 const readline = require('readline');
+const qrcode = require('qrcode-terminal');
 const {
     default: makeWASocket,
     useMultiFileAuthState,
@@ -22,8 +23,6 @@ app.use(express.json());
 
 let sock = null;
 let isWhatsappReady = false;
-let pairingCodeRequested = false;
-
 // ============================================================
 // DATABASE CONNECTION
 // ============================================================
@@ -68,22 +67,13 @@ async function initializeWhatsApp() {
 
             const { connection, lastDisconnect, qr } = update;
 
-            if (qr) if (qr && !pairingCodeRequested) {
+            if (qr) {
 
-                const phoneNumber = '919849075576';
+                console.log('📱 QR CODE GENERATED. Scan Below:\n');
 
-                try {
-
-                    const code = await sock.requestPairingCode(phoneNumber.trim());
-                    console.log(`================================================`);
-                    console.log(`📱 YOUR WHATSAPP PAIRING CODE: ${code}`);
-                    pairingCodeRequested = true;
-                    console.log(`================================================`);
-
-                } catch (err) {
-
-                    console.error('❌ Pairing code error:', err);
-                }
+                qrcode.generate(qr, {
+                    small: true
+                });
             }
 
             if (connection === 'open') {
