@@ -109,9 +109,9 @@ app.post('/api/orders', async (req, res) => {
         });
         await newOrder.save();
 
-        // Send instant notification message in Telugu script to the shop worker
+        // Send instant packing notification in Telugu script to the shop worker
         if (sock && isWhatsappReady) {
-            const workerMobileNumber = "9154699599";
+            const workerMobileNumber = "9849075576";
             const workerChatId = `${workerMobileNumber}@s.whatsapp.net`;
 
             let workerTeluguMessage = `📋 *కొత్త ప్యాకింగ్ ఆర్డర్ వివరాలు (కొత్త ఆర్డర్ వచ్చింది)*\n`;
@@ -153,7 +153,7 @@ app.get('/api/admin/orders', async (req, res) => {
 });
 
 // ============================================================
-// FINALIZE ORDER + SEND DETAILED TABULAR WHATSAPP INVOICE
+// FINALIZE ORDER + SEND INVOICE PDF (ENGLISH ONLY + UPI PAY LINK)
 // ============================================================
 app.put('/api/admin/orders/:id/finalize', async (req, res) => {
     try {
@@ -201,7 +201,7 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         const qrCodeImageBuffer = await QRCode.toBuffer(upiPaymentUri, { margin: 1, width: 130 });
 
         // ============================================================
-        // PROFESSIONAL PDF INVOICE DESIGN
+        // ENGLISH-ONLY PROFESSIONAL PDF INVOICE DESIGN
         // ============================================================
         const tempPdfFileName = `Invoice_${order._id}.pdf`;
         const localTargetPdfPath = path.join(__dirname, tempPdfFileName);
@@ -215,15 +215,15 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         doc.fillColor('#ffffff').fontSize(18).font('Helvetica-Bold').text('Sai Bhavani Lakshmi Srinivasa Kirana Stores', 40, 25, { align: 'center' });
         doc.fontSize(12).font('Helvetica').text('(Battani Shop)', 40, 50, { align: 'center' });
         doc.fontSize(9).text('Nidadavolu, Andhra Pradesh, India | Contact: 9154699599, 8885208886', 40, 70, { align: 'center' });
-        doc.text('TAX INVOICE / వస్తువుల ధరల బిల్లు', 40, 88, { align: 'center' });
+        doc.fontSize(11).font('Helvetica-Bold').text('TAX INVOICE', 40, 88, { align: 'center' });
 
         // Customer Metadata Block
-        doc.fillColor('#1e293b').fontSize(10).font('Helvetica-Bold').text('CUSTOMER DETAILS / వినియోగదారుని వివరాలు', 40, 135);
+        doc.fillColor('#1e293b').fontSize(10).font('Helvetica-Bold').text('CUSTOMER DETAILS', 40, 135);
         doc.strokeColor('#e2e8f0').lineWidth(1).moveTo(40, 148).lineTo(555, 148).stroke();
 
         doc.font('Helvetica').fontSize(10).fillColor('#475569');
-        doc.text(`Name / పేరు: `, 40, 158).font('Helvetica-Bold').fillColor('#1e293b').text(order.customer.name, 120, 158);
-        doc.font('Helvetica').fillColor('#475569').text(`WhatsApp No: `, 40, 173).font('Helvetica-Bold').fillColor('#1e293b').text(order.customer.phone, 120, 173);
+        doc.text(`Customer Name: `, 40, 158).font('Helvetica-Bold').fillColor('#1e293b').text(order.customer.name, 125, 158);
+        doc.font('Helvetica').fillColor('#475569').text(`WhatsApp No: `, 40, 173).font('Helvetica-Bold').fillColor('#1e293b').text(order.customer.phone, 125, 173);
 
         doc.font('Helvetica').fillColor('#475569').text(`Invoice Date: `, 380, 158).font('Helvetica-Bold').fillColor('#1e293b').text(new Date().toLocaleDateString('en-IN'), 465, 158);
         doc.font('Helvetica').fillColor('#475569').text(`Status: `, 380, 173).font('Helvetica-Bold').fillColor('#10b981').text('PROCESSED', 465, 173);
@@ -234,10 +234,10 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         // Table Headers
         doc.rect(40, currentY, 515, 22).fill('#1e293b');
         doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(9);
-        doc.text('Product Description / వస్తువు వివరణ', 45, currentY + 6, { width: 210 });
-        doc.text('Qty / పరిమాణం', 260, currentY + 6, { width: 75, align: 'center' });
-        doc.text('Unit Cost / ధర', 340, currentY + 6, { width: 95, align: 'right' });
-        doc.text('Total / మొత్తం', 445, currentY + 6, { width: 105, align: 'right' });
+        doc.text('Product Description', 45, currentY + 6, { width: 210 });
+        doc.text('Qty / Unit', 260, currentY + 6, { width: 75, align: 'center' });
+        doc.text('Unit Cost', 340, currentY + 6, { width: 95, align: 'right' });
+        doc.text('Total Amount', 445, currentY + 6, { width: 105, align: 'right' });
 
         currentY += 22;
         doc.font('Helvetica').fontSize(9);
@@ -256,7 +256,7 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
             doc.text(`${item.quantity} ${item.unit}`, 260, currentY + 7, { width: 75, align: 'center' });
 
             if (item.price === -1) {
-                doc.fillColor('#ef4444').font('Helvetica-Bold').text('Not Available / లేదు', 340, currentY + 7, { width: 95, align: 'right' });
+                doc.fillColor('#ef4444').font('Helvetica-Bold').text('Out of Stock', 340, currentY + 7, { width: 95, align: 'right' });
                 doc.text('Rs. 0.00', 445, currentY + 7, { width: 105, align: 'right' });
             } else {
                 doc.font('Helvetica').text(`Rs. ${item.price.toFixed(2)}`, 340, currentY + 7, { width: 95, align: 'right' });
@@ -273,33 +273,35 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         doc.strokeColor('#e2e8f0').lineWidth(1).rect(300, currentY, 255, 60).stroke();
 
         doc.fillColor('#475569').font('Helvetica').fontSize(9);
-        doc.text(`Total Available Items / మొత్తం వస్తువులు:`, 310, currentY + 12);
+        doc.text(`Total Available Items:`, 310, currentY + 12);
         doc.font('Helvetica-Bold').fillColor('#1e293b').text(`${totalItemsCount}`, 510, currentY + 12, { align: 'right', width: 35 });
 
-        doc.fillColor('#1e293b').fontSize(11).text(`Grand Total / మొత్తం బిల్లు:`, 310, currentY + 36);
+        doc.fillColor('#1e293b').fontSize(11).text(`Grand Total:`, 310, currentY + 36);
         doc.font('Helvetica-Bold').fillColor('#059669').text(`Rs. ${order.totalAmount.toFixed(2)}`, 450, currentY + 36, { align: 'right', width: 95 });
 
-        // Payment Gateway Integration Box
+        // Payment Gateway Integration Box (QR + Link Option Inside PDF)
         currentY += 80;
         doc.rect(40, currentY, 515, 145).fill('#f0fdf4');
         doc.strokeColor('#bbf7d0').lineWidth(1).rect(40, currentY, 515, 145).stroke();
 
+        // Embed Rendered QR Code
         doc.image(qrCodeImageBuffer, 55, currentY + 8, { width: 130, height: 130 });
 
+        // English Payment Instructions
         let textX = 200;
-        doc.fillColor('#166534').font('Helvetica-Bold').fontSize(11).text('DIGITAL PAYMENT / ఆన్‌లైన్ పేమెంట్', textX, currentY + 15);
+        doc.fillColor('#166534').font('Helvetica-Bold').fontSize(11).text('DIGITAL PAYMENT / UPI GATEWAY', textX, currentY + 15);
+        doc.fillColor('#334155').font('Helvetica').fontSize(8.5).text('Option 1: Scan the QR code image on the left using your mobile phone camera or any banking application (Google Pay, PhonePe, Paytm, BHIM) to pay instantly.', textX, currentY + 32, { width: 340, lineGap: 2 });
+        doc.text('Option 2: If viewing this PDF document directly on your smartphone device, click the interactive green button block built below to pay without scanning.', textX, currentY + 68, { width: 340, lineGap: 1 });
 
-        doc.fillColor('#334155').font('Helvetica').fontSize(8.5).text('Scan the QR code using any UPI App (PhonePe, GooglePay, Paytm) or click the deep-link connection system configuration layout action directly below.', textX, currentY + 32, { width: 340, lineGap: 2 });
-        doc.text('కస్టమర్ గమనిక: పైన ఉన్న QR కోడ్‌ని మీ మొబైల్ లోని GooglePay, PhonePe లేదా Paytm యాప్ ద్వారా స్కాన్ చేసి బిల్లు చెల్లించవచ్చు.', textX, currentY + 62, { width: 340, lineGap: 1 });
-
-        doc.rect(textX, currentY + 98, 200, 28).fill('#059669');
-        doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(10).text('👉 CLICK TO PAY ONLINE 👈', textX + 22, currentY + 107, {
+        // Clickable Button built directly into the PDF
+        doc.rect(textX, currentY + 102, 200, 26).fill('#059669');
+        doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(9.5).text('👉 CLICK TO PAY ONLINE 👈', textX + 24, currentY + 110, {
             link: upiPaymentUri,
             underline: false
         });
-        doc.fillColor('#166534').font('Helvetica-Oblique').fontSize(8.5).text('Clicking launches available mobile banking configurations directly.', textX, currentY + 130);
 
-        doc.fillColor('#94a3b8').font('Helvetica').fontSize(8).text('Thank you for shopping with us! / మా వద్ద కొనుగోలు చేసినందుకు ధన్యవాదాలు!', 40, 765, { align: 'center' });
+        // Footer block notice
+        doc.fillColor('#94a3b8').font('Helvetica').fontSize(8).text('Thank you for shopping with us!', 40, 765, { align: 'center' });
 
         doc.end();
         await new Promise(resolve => writeStream.on('finish', resolve));
@@ -317,7 +319,7 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
             `మీ ఆర్డర్ బిల్లు సిద్ధంగా ఉంది.\n\n` +
             `💰 *Total Bill Amount:* Rs. ${order.totalAmount.toFixed(2)}\n\n` +
             `🔗 *Click here to Pay directly via mobile UPI:* ${upiPaymentUri}\n\n` +
-            `Please find your detailed tabular invoice PDF document breakdown attached below.`;
+            `Please find your detailed English invoice PDF document attached below.`;
 
         console.log('📱 Sending WhatsApp invoice to:', targetChatId);
 
