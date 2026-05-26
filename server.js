@@ -40,7 +40,7 @@ try {
 const getPuppeteerConfig = () => {
     return {
         headless: true,
-        // CRITICAL RAM & STABILITY FLAGS FOR RENDER FREE TIER
+        executablePath: '/opt/render/.cache/puppeteer/chrome/linux-146.0.7680.31/chrome-linux64/chrome',
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -51,6 +51,7 @@ const getPuppeteerConfig = () => {
             '--no-zygote',
             '--disable-accelerated-2d-canvas',
             '--disable-features=site-per-process',
+            '--disable-software-rasterizer',
             '--proxy-server="direct://"',
             '--proxy-bypass-list=*'
         ]
