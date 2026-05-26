@@ -14,6 +14,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+let isWhatsappReady = false;
 // ====================================================================
 // AUTOMATED RUNTIME CHROMIUM ENGINE INSTALLATION FOR CLOUD INSTANCES
 // ====================================================================
@@ -48,7 +49,6 @@ const getPuppeteerConfig = () => {
             '--disable-extensions',
             '--no-first-run',
             '--no-zygote',
-            '--single-process', // Forces everything into one tiny RAM block
             '--disable-accelerated-2d-canvas',
             '--proxy-server="direct://"',
             '--proxy-bypass-list=*'
@@ -98,6 +98,7 @@ function initializeWhatsAppEngine() {
 
     whatsappClient.on('ready', () => {
         console.log('🚀 WhatsApp Engine Connected Successfully!');
+        isWhatsappReady = true;
     });
 
     whatsappClient.on('remote_auth_success', () => {
@@ -108,18 +109,29 @@ function initializeWhatsAppEngine() {
         console.error('❌ Auth failure detected:', msg);
     });
 
+    whatsappClient.on('disconnected', (reason) => {
+        console.log('❌ WhatsApp disconnected:', reason);
+        isWhatsappReady = false;
+    });
+
     whatsappClient.initialize().then(async () => {
         console.log("⏳ Initializing browser session context...");
 
         setTimeout(async () => {
-            // Safe fallback check
+
             if (whatsappClient.info) {
-                console.log("✅ Existing active session recovered from MongoDB. Skipping pairing code.");
+                console.log("✅ Existing active session recovered.");
+                return;
+            }
+
+            if (isWhatsappReady) {
+                console.log("✅ WhatsApp already connected.");
                 return;
             }
 
             try {
                 const myPhoneNumber = '919849075576';
+
                 console.log(`\n=================================================================`);
                 console.log(`📱 REQUESTING PAIRING CODE FOR NUMBER: ${myPhoneNumber}`);
 
@@ -127,10 +139,12 @@ function initializeWhatsAppEngine() {
 
                 console.log(`✨ YOUR WHATSAPP PAIRING CODE IS: ${pairingCode} ✨`);
                 console.log(`=================================================================\n`);
+
             } catch (pairErr) {
-                console.log("ℹ️ Session active or handling background database sync.");
+                console.log("ℹ️ Pairing skipped:", pairErr.message);
             }
-        }, 20000); // 20 second cushion time for Render to breathe
+
+        }, 30000);
     }).catch(err => {
         console.log(`\n⚠️ WhatsApp Initialization Paused: ${err.message}`);
     });
@@ -140,6 +154,10 @@ function initializeWhatsAppEngine() {
 // API ROUTE GATEWAYS
 // ====================================================================
 app.get('/', (req, res) => res.send('Sai Bhavani Engine Operating Normally.'));
+
+app.get('/health', (req, res) => {
+    res.send('alive');
+});
 
 app.post('/api/orders', async (req, res) => {
     try {
@@ -159,6 +177,15 @@ app.get('/api/admin/orders', async (req, res) => {
 app.put('/api/admin/orders/:id/finalize', async (req, res) => {
     try {
         const { itemPrices } = req.body;
+        const whatsappClient = req.app.get('whatsappClient');
+
+        if (!whatsappClient || !isWhatsappReady) {
+            return res.status(503).json({
+                success: false,
+                message: 'WhatsApp engine not connected yet. Please wait and retry.'
+            });
+        }
+
         const order = await Order.findById(req.params.id);
         if (!order) return res.status(404).json({ success: false, message: 'Order reference missing' });
 
@@ -286,22 +313,37 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         let refinedPhone = order.customer.phone.replace(/\D/g, '');
         if (refinedPhone.length === 10) refinedPhone = '91' + refinedPhone;
 
-        const targetChatId = refinedPhone.includes('@c.us') ? refinedPhone : `${refinedPhone}@c.us`;
-
+        const targetChatId = `${refinedPhone}@c.us`;
         if (fs.existsSync(localTargetPdfPath)) {
-            const mediaVectorInstance = MessageMedia.fromFilePath(localTargetPdfPath);
-            const activeWhatsappClient = app.get('whatsappClient');
 
-            if (!activeWhatsappClient || !activeWhatsappClient.info) {
-                throw new Error("WhatsApp connection engine is cold-booting. Please wait 15 seconds and try again.");
+            try {
+
+                console.log("📱 Sending invoice to:", targetChatId);
+                console.log("📄 PDF Path:", localTargetPdfPath);
+                console.log("✅ WhatsApp Ready State:", isWhatsappReady);
+
+                const media = MessageMedia.fromFilePath(localTargetPdfPath);
+
+                await whatsappClient.sendMessage(targetChatId, itemsTextSummary);
+
+                await whatsappClient.sendMessage(
+                    targetChatId,
+                    media,
+                    {
+                        sendMediaAsDocument: true
+                    }
+                );
+            } finally {
+
+                if (fs.existsSync(localTargetPdfPath)) {
+                    fs.unlinkSync(localTargetPdfPath);
+                }
+
             }
 
-            await activeWhatsappClient.sendMessage(targetChatId, mediaVectorInstance, { caption: itemsTextSummary });
-            fs.unlinkSync(localTargetPdfPath);
         } else {
             throw new Error("System printed PDF component missing from asset disk layers.");
         }
-
         return res.json({ success: true, order });
     } catch(err) {
         return res.status(500).json({ success: false, error: err.message });
