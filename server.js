@@ -5,9 +5,6 @@ const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
 const P = require('pino');
-const readline = require('readline');
-const qrcode = require('qrcode-terminal');
-const QRCode = require('qrcode');
 const {
     default: makeWASocket,
     useMultiFileAuthState,
