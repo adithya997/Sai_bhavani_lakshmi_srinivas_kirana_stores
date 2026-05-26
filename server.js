@@ -10,6 +10,7 @@ const { MongoStore } = require('wwebjs-mongo');
 const Order = require('./src/models/Order');
 require('dotenv').config();
 
+process.env.PUPPETEER_CACHE_DIR = '/opt/render/project/.cache/puppeteer';
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -19,6 +20,7 @@ let isWhatsappReady = false;
 const getPuppeteerConfig = () => {
     return {
         headless: true,
+        cacheDirectory: process.env.PUPPETEER_CACHE_DIR,
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
