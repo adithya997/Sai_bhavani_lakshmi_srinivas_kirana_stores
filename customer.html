@@ -8,59 +8,59 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
     <style> body { font-family: 'Plus Jakarta Sans', sans-serif; } </style>
 </head>
-<body class="bg-slate-50 min-h-screen text-slate-800 py-6 px-4">
+<body class="bg-slate-50 min-h-screen text-slate-800 py-4 px-2 md:py-6 md:px-4">
 
-<div class="max-w-xl mx-auto bg-white border border-slate-200 rounded-3xl shadow-xs p-5 md:p-7">
-    <div class="text-center mb-6 border-b border-slate-100 pb-5">
-        <span class="text-4xl">🏪</span>
-        <h1 class="text-lg font-bold text-slate-900 mt-2">Sai Bhavani Lakshmi Srinivasa Kirana Stores (Battani Shop)</h1>
-        <p class="text-xs text-slate-500 font-medium mt-1">Submit your order details below / కిరాణా వస్తువుల ఆర్డర్ ఫారమ్</p>
+<div class="max-w-xl mx-auto bg-white border border-slate-200 rounded-2xl md:rounded-3xl shadow-xs p-4 md:p-7">
+    <div class="text-center mb-5 border-b border-slate-100 pb-4">
+        <span class="text-3xl md:text-4xl">🏪</span>
+        <h1 class="text-base md:text-lg font-bold text-slate-900 mt-2 px-1">Sai Bhavani Lakshmi Srinivasa Kirana Stores (Battani Shop)</h1>
+        <p class="text-[11px] md:text-xs text-slate-500 font-medium mt-1">Submit your order details below / కిరాణా వస్తువుల ఆర్డర్ ఫారమ్</p>
 
-        <div class="mt-3 bg-emerald-50/50 border border-emerald-100 rounded-2xl p-2.5 text-left text-xs space-y-1">
+        <div class="mt-3 bg-emerald-50/50 border border-emerald-100 rounded-xl p-2.5 text-left text-[11px] md:text-xs space-y-2">
             <p class="font-bold text-slate-700 text-center border-b border-emerald-100 pb-1 mb-1">📞 For Queries / సందేహాల కొరకు సంప్రదించండి:</p>
-            <div class="flex justify-around text-slate-600 font-semibold">
-                <span>Ch Srinivas: <a href="tel:9154699599" class="text-emerald-700 underline">9154699599</a></span>
-                <span>Ch Tarun: <a href="tel:8885208886" class="text-emerald-700 underline">8885208886</a></span>
+            <div class="flex flex-col sm:flex-row justify-around gap-1 text-center sm:text-left text-slate-600 font-semibold">
+                <span>Ch Srinivas: <a href="tel:9154699599" class="text-emerald-700 underline tracking-wide">9154699599</a></span>
+                <span>Ch Tarun: <a href="tel:8885208886" class="text-emerald-700 underline tracking-wide">8885208886</a></span>
             </div>
         </div>
     </div>
 
-    <form id="orderSubmissionForm" class="space-y-5" onsubmit="transmitCustomerForm(event)">
-        <div class="grid grid-cols-1 gap-4">
+    <form id="orderSubmissionForm" class="space-y-4" onsubmit="transmitCustomerForm(event)">
+        <div class="grid grid-cols-1 gap-3.5">
             <div>
-                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Your Name / మీ పేరు</label>
-                <input type="text" id="custName" required placeholder="Enter your full name" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-emerald-500">
+                <label class="block text-[11px] font-bold text-slate-700 uppercase mb-1 tracking-wide">Your Name / మీ పేరు</label>
+                <input type="text" id="custName" required placeholder="Enter your full name / మీ పేరు నమోదు చేయండి" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm focus:outline-emerald-500">
             </div>
             <div>
-                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">WhatsApp Number / వాట్సాప్ నంబర్</label>
-                <input type="tel" id="custPhone" required placeholder="e.g. 9876543210" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-emerald-500">
+                <label class="block text-[11px] font-bold text-slate-700 uppercase mb-1 tracking-wide">WhatsApp Number / వాట్సాప్ నంబర్</label>
+                <input type="tel" id="custPhone" required placeholder="e.g. 9876543210" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm focus:outline-emerald-500">
             </div>
         </div>
 
-        <hr class="border-slate-100">
+        <hr class="border-slate-100 my-2">
 
         <div>
-            <div class="flex justify-between items-center mb-3">
-                <label class="text-xs font-bold text-slate-700 uppercase">Items To Buy / కొనుగోలు వస్తువులు</label>
-                <button type="button" onclick="insertItemRow()" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors">+ Add Product / వస్తువును చేర్చండి</button>
+            <div class="flex justify-between items-center mb-2.5">
+                <label class="text-[11px] font-bold text-slate-700 uppercase tracking-wide">Items To Buy / కొనుగోలు వస్తువులు</label>
+                <button type="button" onclick="insertItemRow()" class="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 transition-colors bg-emerald-50 px-2.5 py-1 rounded-lg">+ Add Item / చేర్చండి</button>
             </div>
-            <div id="itemsContainer" class="space-y-4"></div>
+            <div id="itemsContainer" class="space-y-3"></div>
         </div>
 
-        <button type="submit" id="submitFormBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl text-xs tracking-wider uppercase transition-all shadow-md active:scale-98">
+        <button type="submit" id="submitFormBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-[11px] md:text-xs tracking-wider uppercase transition-all shadow-sm active:scale-98 mt-2">
             Submit Order Request / ఆర్డర్ సమర్పించండి
         </button>
     </form>
 </div>
 
-<div id="successModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
-    <div class="bg-white rounded-3xl max-w-md w-full border border-slate-100 p-6 shadow-xl transform scale-95 transition-all animate-in fade-in zoom-in-95 duration-200">
+<div id="successModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 z-50 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full border border-slate-100 p-5 md:p-6 shadow-xl transform scale-95 transition-all">
         <div class="text-center">
-            <span class="text-5xl inline-block bg-emerald-50 p-4 rounded-full mb-4">✅</span>
-            <h3 class="text-lg font-bold text-slate-900">Order Accepted Successfully!</h3>
-            <h4 class="text-sm font-semibold text-emerald-700 mt-0.5">మీ ఆర్డర్ విజయవంతంగా స్వీకరించబడింది!</h4>
+            <span class="text-4xl inline-block bg-emerald-50 p-3 rounded-full mb-3">✅</span>
+            <h3 class="text-base md:text-lg font-bold text-slate-900">Order Accepted Successfully!</h3>
+            <h4 class="text-xs md:text-sm font-semibold text-emerald-700 mt-0.5">మీ ఆర్డర్ విజయవంతంగా స్వీకరించబడింది!</h4>
 
-            <div class="mt-4 text-left text-xs text-slate-600 space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-100 leading-relaxed">
+            <div class="mt-4 text-left text-[11px] md:text-xs text-slate-600 space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-100 leading-relaxed max-h-[60vh] overflow-y-auto">
                 <p><strong>English:</strong> Your order has been registered and will be processed shortly. Once packing is completed, we will send a WhatsApp message with a PDF containing your tabular item invoice and payment configurations. Payment can be done conveniently through the linked UPI options or physically at the shop counter.</p>
                 <hr class="border-slate-200/60">
                 <p><strong>తెలుగు:</strong> మీ ఆర్డర్ నమోదు చేయబడింది, త్వరలోనే వస్తువులను ప్యాక్ చేస్తాము. ప్యాకింగ్ పూర్తయిన తర్వాత, మీ వస్తువుల ధరల వివరాల బిల్లు (PDF Invoice) మరియు పేమెంట్ వివరాలను మీ వాట్సాప్‌కు పంపిస్తాము. మీరు ఆన్‌లైన్ ద్వారా (UPI యాప్స్ ద్వారా) లేదా నేరుగా మా షాప్ వద్దకు వచ్చి బిల్లు చెల్లించవచ్చు.</p>
@@ -80,12 +80,12 @@
         const container = document.getElementById('itemsContainer');
         const rowId = Date.now();
         const itemHtml = `
-            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-2 relative" id="row_${rowId}">
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2 relative" id="row_${rowId}">
                 <button type="button" onclick="document.getElementById('row_${rowId}').remove()" class="absolute top-2 right-2 text-slate-400 hover:text-red-500 text-xs transition-colors p-1">❌</button>
-                <div class="flex gap-2 items-center pt-2">
-                    <input type="text" placeholder="Item Name (e.g. Sugar, Oil) / వస్తువు పేరు" required class="flex-1 bg-white border px-3 py-1.5 text-xs rounded-lg focus:outline-emerald-500 product-name">
-                    <input type="number" placeholder="Qty / పరిమాణం" step="any" required class="w-20 bg-white border px-2 py-1.5 text-xs rounded-lg text-center product-qty">
-                    <select class="bg-white border px-2 py-1.5 text-xs rounded-lg focus:outline-emerald-500 product-unit">
+                <div class="flex flex-row gap-2 items-center pt-3">
+                    <input type="text" placeholder="Item Name / వస్తువు పేరు" required class="flex-1 min-w-0 bg-white border border-slate-200 px-2.5 py-1.5 text-xs rounded-lg focus:outline-emerald-500 product-name">
+                    <input type="number" placeholder="Qty / పరిమాణం" step="any" required class="w-16 bg-white border border-slate-200 px-1.5 py-1.5 text-xs rounded-lg text-center product-qty">
+                    <select class="w-20 bg-white border border-slate-200 px-1 py-1.5 text-xs rounded-lg focus:outline-emerald-500 product-unit">
                         <option value="kg">KG</option>
                         <option value="gram">Grams</option>
                         <option value="liter">Liter</option>
@@ -95,7 +95,8 @@
                     </select>
                 </div>
                 <div>
-                    <input type="text" placeholder="Brand/Type option (e.g. Freedom Oil, Gold Drop) / బ్రాండ్ లేదా రకం వివరాలు" class="w-full bg-white border px-3 py-1.5 text-[11px] rounded-lg focus:outline-emerald-500 product-comment">
+                    <input type="text" placeholder="Brand / Type / Quality preferences (e.g. Freedom Oil) / బ్రాండ్ లేదా రకం వివరాలు" class="w-full bg-white border border-slate-200 px-2.5 py-1.5 text-[11px] rounded-lg focus:outline-emerald-500 product-comment">
+                    <p class="text-[9px] text-slate-400 mt-0.5 px-1">Specify your preference here / మీకు కావలసిన బ్రాండ్ వివరాలను ఇక్కడ రాయండి</p>
                 </div>
             </div>
         `;
@@ -107,7 +108,10 @@
         const submitBtn = document.getElementById('submitFormBtn');
         const rows = document.querySelectorAll('#itemsContainer > div');
 
-        if (rows.length === 0) { alert("Please add at least one item before submitting! / దయచేసి కనీసం ఒక వస్తువును జోడించండి."); return; }
+        if (rows.length === 0) {
+            alert("Please add at least one item before submitting! / దయచేసి కనీసం ఒక వస్తువును జోడించండి.");
+            return;
+        }
 
         const items = [];
         rows.forEach(row => {
@@ -127,7 +131,8 @@
             items: items
         };
 
-        submitBtn.disabled = true; submitBtn.innerText = "Transmitting Order Request / ఆర్డర్ పంపబడుతోంది...";
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Transmitting Order Request / ఆర్డర్ పంపబడుతోంది...";
 
         try {
             const res = await fetch(`${TARGET_API}/orders`, {
@@ -140,13 +145,16 @@
                 document.getElementById('orderSubmissionForm').reset();
                 document.getElementById('itemsContainer').innerHTML = '';
                 insertItemRow();
-                // Reveal professional confirmation popup
                 document.getElementById('successModal').classList.remove('hidden');
             } else {
                 alert("Submission processing error: " + data.error);
             }
-        } catch(err) { alert("Connection error. Try again."); }
-        finally { submitBtn.disabled = false; submitBtn.innerText = "Submit Order Request / ఆర్డర్ సమర్పించండి"; }
+        } catch(err) {
+            alert("Connection error. Try again.");
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = "Submit Order Request / ఆర్డర్ సమర్పించండి";
+        }
     }
 
     function dismissSuccessModal() {
