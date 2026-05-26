@@ -15,32 +15,11 @@ app.use(cors());
 app.use(express.json());
 
 let isWhatsappReady = false;
-// ====================================================================
-// AUTOMATED RUNTIME CHROMIUM ENGINE INSTALLATION FOR CLOUD INSTANCES
-// ====================================================================
-const localCacheDir = '/opt/render/.cache/puppeteer';
-console.log("🔍 Checking hosting environment browser path configuration...");
-
-try {
-    if (!fs.existsSync(localCacheDir) || fs.readdirSync(localCacheDir).length === 0) {
-        console.log("⚠️ Chromium binaries missing from cloud engine cache layers.");
-        console.log("🛠️ Initializing background browser engine downloading cycle...");
-        if (shell.exec('npx puppeteer browsers install chrome').code !== 0) {
-            console.error("❌ Programmatic browser component installation encountered an error.");
-        } else {
-            console.log("🎯 Chromium core binaries downloaded successfully!");
-        }
-    } else {
-        console.log("✅ Cached chromium binaries confirmed.");
-    }
-} catch (err) {
-    console.error("⚠️ Runtime file check caution:", err.message);
-}
 
 const getPuppeteerConfig = () => {
     return {
         headless: true,
-        executablePath: '/opt/render/.cache/puppeteer/chrome/linux-146.0.7680.31/chrome-linux64/chrome',
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/opt/render/.cache/puppeteer/chrome/linux-146.0.7680.31/chrome-linux64/chrome',
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -70,7 +49,6 @@ if (targetDatabaseURI) {
     mongoose.connect(targetDatabaseURI)
         .then(() => {
             console.log("✅ MongoDB Connected Successfully");
-            initializeWhatsAppEngine();
         })
         .catch(err => console.error("❌ MongoDB Connection Error:", err));
 }
@@ -152,7 +130,7 @@ function initializeWhatsAppEngine() {
                 console.log("ℹ️ Pairing skipped:", pairErr.message);
             }
 
-        }, 60000);
+        }, 30000);
     }).catch(err => {
         console.log(`\n⚠️ WhatsApp Initialization Paused: ${err.message}`);
     });
@@ -387,4 +365,17 @@ app.delete('/api/admin/orders/:id', async (req, res) => {
 });
 
 const SERVER_PORT = process.env.PORT || 10000;
-app.listen(SERVER_PORT, () => console.log(`Express Server listening on Port: ${SERVER_PORT}`));
+app.listen(SERVER_PORT, () => {
+
+    console.log(`Express Server listening on Port: ${SERVER_PORT}`);
+
+    console.log("⏳ Allowing Render container stabilization before WhatsApp boot...");
+
+    setTimeout(() => {
+
+        console.log("🚀 Starting delayed WhatsApp initialization cycle...");
+        initializeWhatsAppEngine();
+
+    }, 120000);
+
+});
