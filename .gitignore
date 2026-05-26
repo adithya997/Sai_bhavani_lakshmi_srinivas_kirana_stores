@@ -35,3 +35,4 @@ out/
 target/
 .DS_Store
 *.log
+auth_info_baileys/
