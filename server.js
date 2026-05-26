@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
 const P = require('pino');
+const readline = require('readline');
 const {
     default: makeWASocket,
     useMultiFileAuthState,
@@ -66,7 +67,21 @@ async function initializeWhatsApp() {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr) {
-                console.log('📱 QR RECEIVED. Scan from WhatsApp Linked Devices.');
+
+                const phoneNumber = '919849075576';
+
+                try {
+
+                    const code = await sock.requestPairingCode(phoneNumber);
+
+                    console.log(`================================================`);
+                    console.log(`📱 YOUR WHATSAPP PAIRING CODE: ${code}`);
+                    console.log(`================================================`);
+
+                } catch (err) {
+
+                    console.error('❌ Pairing code error:', err);
+                }
             }
 
             if (connection === 'open') {
@@ -84,7 +99,9 @@ async function initializeWhatsApp() {
                 console.log('❌ WhatsApp disconnected. Reconnecting:', shouldReconnect);
 
                 if (shouldReconnect) {
-                    initializeWhatsApp();
+                    setTimeout(() => {
+                        initializeWhatsApp();
+                    }, 5000);
                 }
             }
         });
