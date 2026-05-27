@@ -25,6 +25,24 @@ let isWhatsappReady = false;
 let isInitializing = false;
 let reconnectTimeout = null;
 let qrGenerated = false;
+
+setInterval(async () => {
+
+    try {
+
+        if (sock && isWhatsappReady) {
+
+            await sock.sendPresenceUpdate('available');
+
+            console.log('💓 WhatsApp keep alive ping');
+        }
+
+    } catch (err) {
+
+        console.log('⚠️ Keep alive failed');
+    }
+
+}, 180000);
 // ============================================================
 // DATABASE CONNECTION
 // ============================================================
