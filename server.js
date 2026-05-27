@@ -23,15 +23,20 @@ app.use(express.json());
 let sock = null;
 let isWhatsappReady = false;
 let isInitializing = false;
-
+let reconnectTimeout = null;
+let qrGenerated = false;
 // ============================================================
 // DATABASE CONNECTION
 // ============================================================
 const targetDatabaseURI = process.env.MONGODB_URI || process.env.MONGO_URI;
 
 mongoose.connect(targetDatabaseURI)
-    .then(() => { console.log('✅ MongoDB Connected Successfully'); })
-    .catch(err => { console.error('❌ MongoDB Connection Error:', err); });
+    .then(() => {
+        console.log('✅ MongoDB Connected Successfully');
+    })
+    .catch(err => {
+        console.error('❌ MongoDB Connection Error:', err);
+    });
 
 // ============================================================
 // BAILEYS WHATSAPP ENGINE
@@ -45,13 +50,20 @@ async function initializeWhatsApp() {
 
     try {
         console.log('📦 Initializing Baileys WhatsApp Engine...');
-        const { state, saveCreds } = await useMultiFileAuthState('./auth_info_baileys');
-        const { version } = await fetchLatestBaileysVersion();
+        const {state, saveCreds} = await useMultiFileAuthState('./auth_info_baileys');
+        const {version} = await fetchLatestBaileysVersion();
+
+        if (sock) {
+            try {
+                sock.end();
+            } catch (e) {
+            }
+        }
 
         sock = makeWASocket({
             version,
             auth: state,
-            logger: P({ level: 'silent' }),
+            logger: P({level: 'silent'}),
             browser: ['Sai Bhavani Kirana', 'Chrome', '1.0.0'],
             syncFullHistory: false,
             markOnlineOnConnect: false,
@@ -60,9 +72,14 @@ async function initializeWhatsApp() {
 
         sock.ev.on('creds.update', saveCreds);
         sock.ev.on('connection.update', async (update) => {
-            const { connection, lastDisconnect, qr } = update;
-            if (qr) {
-                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qr)}`;
+            const {connection, lastDisconnect, qr} = update;
+            if (qr && !qrGenerated) {
+
+                qrGenerated = true;
+
+                const qrUrl =
+                    `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qr)}`;
+
                 console.log('================================================');
                 console.log('📱 OPEN THIS QR LINK IN BROWSER:');
                 console.log(qrUrl);
@@ -70,31 +87,66 @@ async function initializeWhatsApp() {
             }
             if (connection === 'open') {
                 console.log('🚀 WhatsApp Engine Connected Successfully!');
-                isWhatsappReady = true;
                 isInitializing = false;
+                isWhatsappReady = true;
+                qrGenerated = false;
+                if (reconnectTimeout) {
+                    clearTimeout(reconnectTimeout);
+                }
             }
             if (connection === 'close') {
+
                 isWhatsappReady = false;
                 isInitializing = false;
-                const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+                qrGenerated = false;
+
+                const shouldReconnect =
+                    lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+
                 console.log('❌ WhatsApp disconnected. Reconnecting:', shouldReconnect);
-                if (shouldReconnect) {
-                    sock = null;
-                    setTimeout(() => { initializeWhatsApp(); }, 5000);
+
+                if (shouldReconnect && !reconnectTimeout) {
+
+                    reconnectTimeout = setTimeout(async () => {
+
+                        reconnectTimeout = null;
+                        sock = null;
+
+                        await initializeWhatsApp();
+
+                    }, 10000);
                 }
             }
         });
     } catch (err) {
+
+        isInitializing = false;
+        qrGenerated = false;
+
         console.error('❌ WhatsApp Initialization Error:', err);
-        setTimeout(() => { initializeWhatsApp(); }, 15000);
+
+        if (!reconnectTimeout) {
+
+            reconnectTimeout = setTimeout(async () => {
+
+                reconnectTimeout = null;
+
+                await initializeWhatsApp();
+
+            }, 15000);
+        }
     }
 }
 
 // ============================================================
 // ROUTES
 // ============================================================
-app.get('/', (req, res) => { res.send('Sai Bhavani Engine Operating Normally.'); });
-app.get('/health', (req, res) => { res.send('alive'); });
+app.get('/', (req, res) => {
+    res.send('Sai Bhavani Engine Operating Normally.');
+});
+app.get('/health', (req, res) => {
+    res.send('alive');
+});
 
 // ============================================================
 // CUSTOMER ORDER SUBMISSION -> ALERTS WORKER IMMEDIATELY
@@ -132,23 +184,23 @@ app.post('/api/orders', async (req, res) => {
             workerTeluguMessage += `⚠️ *గమనిక:* యజమాని ఇంకా బిల్లు ఖరారు చేయలేదు. దయచేసి ప్యాకింగ్ సిద్ధం చేయండి.`;
 
             console.log('📱 Routing instant packing list layout directly to worker:', workerChatId);
-            await sock.sendMessage(workerChatId, { text: workerTeluguMessage });
+            await sock.sendMessage(workerChatId, {text: workerTeluguMessage});
         } else {
             console.log('⚠️ Order saved, but worker WhatsApp message skipped (Engine not ready).');
         }
 
-        return res.status(201).json({ success: true, orderId: newOrder._id });
+        return res.status(201).json({success: true, orderId: newOrder._id});
     } catch (error) {
-        return res.status(500).json({ success: false, error: error.message });
+        return res.status(500).json({success: false, error: error.message});
     }
 });
 
 app.get('/api/admin/orders', async (req, res) => {
     try {
-        const allRecords = await Order.find({}).sort({ createdAt: -1 });
+        const allRecords = await Order.find({}).sort({createdAt: -1});
         return res.json(allRecords);
     } catch (error) {
-        return res.status(500).json({ success: false, error: error.message });
+        return res.status(500).json({success: false, error: error.message});
     }
 });
 
@@ -158,14 +210,14 @@ app.get('/api/admin/orders', async (req, res) => {
 app.put('/api/admin/orders/:id/finalize', async (req, res) => {
     try {
         if (!sock || !isWhatsappReady) {
-            return res.status(503).json({ success: false, message: 'WhatsApp engine not connected yet.' });
+            return res.status(503).json({success: false, message: 'WhatsApp engine not connected yet.'});
         }
 
-        const { itemPrices } = req.body;
+        const {itemPrices} = req.body;
         const order = await Order.findById(req.params.id);
 
         if (!order) {
-            return res.status(404).json({ success: false, message: 'Order reference missing' });
+            return res.status(404).json({success: false, message: 'Order reference missing'});
         }
 
         let grandSum = 0;
@@ -198,7 +250,7 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
 
         // Generate UPI deep link & base64 payment QR Code
         const upiPaymentUri = `upi://pay?pa=8885208886@ybl&pn=Sai%20Bhavani%20Kirana%20Stores&am=${order.totalAmount}&cu=INR&tn=Order_${order._id}`;
-        const qrCodeImageBuffer = await QRCode.toBuffer(upiPaymentUri, { margin: 1, width: 130 });
+        const qrCodeImageBuffer = await QRCode.toBuffer(upiPaymentUri, {margin: 1, width: 130});
 
         // ============================================================
         // ENGLISH-ONLY PROFESSIONAL PDF INVOICE DESIGN
@@ -206,16 +258,16 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         const tempPdfFileName = `Invoice_${order._id}.pdf`;
         const localTargetPdfPath = path.join(__dirname, tempPdfFileName);
 
-        const doc = new PDFDocument({ margin: 40, size: 'A4' });
+        const doc = new PDFDocument({margin: 40, size: 'A4'});
         const writeStream = fs.createWriteStream(localTargetPdfPath);
         doc.pipe(writeStream);
 
         // Header Styling Block
         doc.rect(0, 0, 595, 110).fill('#059669');
-        doc.fillColor('#ffffff').fontSize(18).font('Helvetica-Bold').text('Sai Bhavani Lakshmi Srinivasa Kirana Stores', 40, 25, { align: 'center' });
-        doc.fontSize(12).font('Helvetica').text('(Battani Shop)', 40, 50, { align: 'center' });
-        doc.fontSize(9).text('Nidadavolu, Andhra Pradesh, India | Contact: 9154699599, 8885208886', 40, 70, { align: 'center' });
-        doc.fontSize(11).font('Helvetica-Bold').text('TAX INVOICE', 40, 88, { align: 'center' });
+        doc.fillColor('#ffffff').fontSize(18).font('Helvetica-Bold').text('Sai Bhavani Lakshmi Srinivasa Kirana Stores', 40, 25, {align: 'center'});
+        doc.fontSize(12).font('Helvetica').text('(Battani Shop)', 40, 50, {align: 'center'});
+        doc.fontSize(9).text('Nidadavolu, Andhra Pradesh, India | Contact: 9154699599, 8885208886', 40, 70, {align: 'center'});
+        doc.fontSize(11).font('Helvetica-Bold').text('TAX INVOICE', 40, 88, {align: 'center'});
 
         // Customer Metadata Block
         doc.fillColor('#1e293b').fontSize(10).font('Helvetica-Bold').text('CUSTOMER DETAILS', 40, 135);
@@ -234,10 +286,10 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         // Table Headers
         doc.rect(40, currentY, 515, 22).fill('#1e293b');
         doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(9);
-        doc.text('Product Description', 45, currentY + 6, { width: 210 });
-        doc.text('Qty / Unit', 260, currentY + 6, { width: 75, align: 'center' });
-        doc.text('Unit Cost', 340, currentY + 6, { width: 95, align: 'right' });
-        doc.text('Total Amount', 445, currentY + 6, { width: 105, align: 'right' });
+        doc.text('Product Description', 45, currentY + 6, {width: 210});
+        doc.text('Qty / Unit', 260, currentY + 6, {width: 75, align: 'center'});
+        doc.text('Unit Cost', 340, currentY + 6, {width: 95, align: 'right'});
+        doc.text('Total Amount', 445, currentY + 6, {width: 105, align: 'right'});
 
         currentY += 22;
         doc.font('Helvetica').fontSize(9);
@@ -252,15 +304,21 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
             let descriptiveLabel = item.productName;
             if (item.itemComment) descriptiveLabel += ` (${item.itemComment})`;
 
-            doc.text(descriptiveLabel, 45, currentY + 7, { width: 210, height: 15, ellipsis: true });
-            doc.text(`${item.quantity} ${item.unit}`, 260, currentY + 7, { width: 75, align: 'center' });
+            doc.text(descriptiveLabel, 45, currentY + 7, {width: 210, height: 15, ellipsis: true});
+            doc.text(`${item.quantity} ${item.unit}`, 260, currentY + 7, {width: 75, align: 'center'});
 
             if (item.price === -1) {
-                doc.fillColor('#ef4444').font('Helvetica-Bold').text('Out of Stock', 340, currentY + 7, { width: 95, align: 'right' });
-                doc.text('Rs. 0.00', 445, currentY + 7, { width: 105, align: 'right' });
+                doc.fillColor('#ef4444').font('Helvetica-Bold').text('Out of Stock', 340, currentY + 7, {
+                    width: 95,
+                    align: 'right'
+                });
+                doc.text('Rs. 0.00', 445, currentY + 7, {width: 105, align: 'right'});
             } else {
-                doc.font('Helvetica').text(`Rs. ${item.price.toFixed(2)}`, 340, currentY + 7, { width: 95, align: 'right' });
-                doc.text(`Rs. ${item.subtotal.toFixed(2)}`, 445, currentY + 7, { width: 105, align: 'right' });
+                doc.font('Helvetica').text(`Rs. ${item.price.toFixed(2)}`, 340, currentY + 7, {
+                    width: 95,
+                    align: 'right'
+                });
+                doc.text(`Rs. ${item.subtotal.toFixed(2)}`, 445, currentY + 7, {width: 105, align: 'right'});
             }
 
             doc.strokeColor('#f1f5f9').lineWidth(0.5).moveTo(40, currentY + 24).lineTo(555, currentY + 24).stroke();
@@ -274,10 +332,16 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
 
         doc.fillColor('#475569').font('Helvetica').fontSize(9);
         doc.text(`Total Available Items:`, 310, currentY + 12);
-        doc.font('Helvetica-Bold').fillColor('#1e293b').text(`${totalItemsCount}`, 510, currentY + 12, { align: 'right', width: 35 });
+        doc.font('Helvetica-Bold').fillColor('#1e293b').text(`${totalItemsCount}`, 510, currentY + 12, {
+            align: 'right',
+            width: 35
+        });
 
         doc.fillColor('#1e293b').fontSize(11).text(`Grand Total:`, 310, currentY + 36);
-        doc.font('Helvetica-Bold').fillColor('#059669').text(`Rs. ${order.totalAmount.toFixed(2)}`, 450, currentY + 36, { align: 'right', width: 95 });
+        doc.font('Helvetica-Bold').fillColor('#059669').text(`Rs. ${order.totalAmount.toFixed(2)}`, 450, currentY + 36, {
+            align: 'right',
+            width: 95
+        });
 
         // Payment Gateway Integration Box (QR + Link Option Inside PDF)
         currentY += 80;
@@ -285,13 +349,19 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         doc.strokeColor('#bbf7d0').lineWidth(1).rect(40, currentY, 515, 145).stroke();
 
         // Embed Rendered QR Code
-        doc.image(qrCodeImageBuffer, 55, currentY + 8, { width: 130, height: 130 });
+        doc.image(qrCodeImageBuffer, 55, currentY + 8, {width: 130, height: 130});
 
         // English Payment Instructions
         let textX = 200;
         doc.fillColor('#166534').font('Helvetica-Bold').fontSize(11).text('DIGITAL PAYMENT / UPI GATEWAY', textX, currentY + 15);
-        doc.fillColor('#334155').font('Helvetica').fontSize(8.5).text('Option 1: Scan the QR code image on the left using your mobile phone camera or any banking application (Google Pay, PhonePe, Paytm, BHIM) to pay instantly.', textX, currentY + 32, { width: 340, lineGap: 2 });
-        doc.text('Option 2: If viewing this PDF document directly on your smartphone device, click the interactive green button block built below to pay without scanning.', textX, currentY + 68, { width: 340, lineGap: 1 });
+        doc.fillColor('#334155').font('Helvetica').fontSize(8.5).text('Option 1: Scan the QR code image on the left using your mobile phone camera or any banking application (Google Pay, PhonePe, Paytm, BHIM) to pay instantly.', textX, currentY + 32, {
+            width: 340,
+            lineGap: 2
+        });
+        doc.text('Option 2: If viewing this PDF document directly on your smartphone device, click the interactive green button block built below to pay without scanning.', textX, currentY + 68, {
+            width: 340,
+            lineGap: 1
+        });
 
         // Clickable Button built directly into the PDF
         doc.rect(textX, currentY + 102, 200, 26).fill('#059669');
@@ -301,7 +371,7 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         });
 
         // Footer block notice
-        doc.fillColor('#94a3b8').font('Helvetica').fontSize(8).text('Thank you for shopping with us!', 40, 765, { align: 'center' });
+        doc.fillColor('#94a3b8').font('Helvetica').fontSize(8).text('Thank you for shopping with us!', 40, 765, {align: 'center'});
 
         doc.end();
         await new Promise(resolve => writeStream.on('finish', resolve));
@@ -323,19 +393,21 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
 
         console.log('📱 Sending WhatsApp invoice to:', targetChatId);
 
-        await sock.sendMessage(targetChatId, { text: itemsTextSummary });
+        await sock.sendMessage(targetChatId, {text: itemsTextSummary});
         await sock.sendMessage(targetChatId, {
             document: fs.readFileSync(localTargetPdfPath),
             mimetype: 'application/pdf',
             fileName: tempPdfFileName
         });
 
-        if (fs.existsSync(localTargetPdfPath)) { fs.unlinkSync(localTargetPdfPath); }
-        return res.json({ success: true, order });
+        if (fs.existsSync(localTargetPdfPath)) {
+            fs.unlinkSync(localTargetPdfPath);
+        }
+        return res.json({success: true, order});
 
     } catch (err) {
         console.error(err);
-        return res.status(500).json({ success: false, error: err.message });
+        return res.status(500).json({success: false, error: err.message});
     }
 });
 
@@ -344,11 +416,11 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
 // ============================================================
 app.patch('/api/admin/orders/:id/payment', async (req, res) => {
     try {
-        const { paymentStatus } = req.body;
-        const order = await Order.findByIdAndUpdate(req.params.id, { paymentStatus }, { new: true });
-        return res.json({ success: true, order });
+        const {paymentStatus} = req.body;
+        const order = await Order.findByIdAndUpdate(req.params.id, {paymentStatus}, {new: true});
+        return res.json({success: true, order});
     } catch (err) {
-        return res.status(500).json({ success: false, error: err.message });
+        return res.status(500).json({success: false, error: err.message});
     }
 });
 
@@ -358,9 +430,9 @@ app.patch('/api/admin/orders/:id/payment', async (req, res) => {
 app.delete('/api/admin/orders/:id', async (req, res) => {
     try {
         await Order.findByIdAndDelete(req.params.id);
-        return res.json({ success: true });
+        return res.json({success: true});
     } catch (error) {
-        return res.status(500).json({ success: false, error: error.message });
+        return res.status(500).json({success: false, error: error.message});
     }
 });
 
