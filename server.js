@@ -15,6 +15,14 @@ const {
 
 const Order = require('./src/models/Order');
 require('dotenv').config();
+const productDictionary =
+    require('./productDictionary');
+
+const brandDictionary =
+    require('./brandDictionary');
+
+const transliterateToTelugu =
+    require('./transliterator');
 
 const app = express();
 app.use(cors());
@@ -169,6 +177,38 @@ app.get('/health', (req, res) => {
 // ============================================================
 // CUSTOMER ORDER SUBMISSION -> ALERTS WORKER IMMEDIATELY
 // ============================================================
+
+function convertProductToTelugu(productName) {
+
+    const normalized =
+        productName
+            .trim()
+            .toLowerCase();
+
+    if(productDictionary[normalized]) {
+        return productDictionary[normalized];
+    }
+
+    return transliterateToTelugu(productName);
+}
+
+function convertBrandToTelugu(brandName) {
+
+    if(!brandName) return "";
+
+    const normalized =
+        brandName
+            .trim()
+            .toLowerCase();
+
+    if(brandDictionary[normalized]) {
+        return brandDictionary[normalized];
+    }
+
+    return transliterateToTelugu(brandName);
+}
+
+
 app.post('/api/orders', async (req, res) => {
     try {
         const newOrder = new Order({
@@ -192,9 +232,22 @@ app.post('/api/orders', async (req, res) => {
             workerTeluguMessage += `*కావలసిన వస్తువుల జాబితా:*\n`;
 
             newOrder.items.forEach((item, idx) => {
-                workerTeluguMessage += `${idx + 1}. 📦 *${item.productName}* - ${item.quantity} ${item.unit}\n`;
-                if (item.itemComment) {
-                    workerTeluguMessage += `   💬 _రకం/బ్రాండ్ వివరణ:_ ${item.itemComment}\n`;
+                const teluguProduct =
+                    convertProductToTelugu(
+                        item.productName
+                    );
+
+                workerTeluguMessage +=
+                    `${idx + 1}. 📦 *${teluguProduct}* - ${item.quantity} ${item.unit}\n`;
+                if(item.itemComment){
+
+                    const teluguBrand =
+                        convertBrandToTelugu(
+                            item.itemComment
+                        );
+
+                    workerTeluguMessage +=
+                        `   🏷️ *బ్రాండ్:* ${teluguBrand}\n`;
                 }
             });
 
