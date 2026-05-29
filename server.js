@@ -181,7 +181,7 @@ app.post('/api/orders', async (req, res) => {
 
         // Send instant packing notification in Telugu script to the shop worker
         if (sock && isWhatsappReady) {
-            const workerMobileNumber = "9849075576";
+            const workerMobileNumber = "919849075576";
             const workerChatId = `${workerMobileNumber}@s.whatsapp.net`;
 
             let workerTeluguMessage = `📋 *కొత్త ప్యాకింగ్ ఆర్డర్ వివరాలు (కొత్త ఆర్డర్ వచ్చింది)*\n`;
@@ -202,8 +202,17 @@ app.post('/api/orders', async (req, res) => {
             workerTeluguMessage += `⚠️ *గమనిక:* యజమాని ఇంకా బిల్లు ఖరారు చేయలేదు. దయచేసి ప్యాకింగ్ సిద్ధం చేయండి.`;
 
             console.log('📱 Routing instant packing list layout directly to worker:', workerChatId);
-            await sock.sendMessage(workerChatId, {text: workerTeluguMessage});
-        } else {
+            setImmediate(async () => {
+                try {
+                    if (sock && isWhatsappReady) {
+                        await sock.sendMessage(workerChatId, {
+                            text: workerTeluguMessage
+                        });
+                    }
+                } catch (err) {
+                    console.error('Worker message failed:', err);
+                }
+            });        } else {
             console.log('⚠️ Order saved, but worker WhatsApp message skipped (Engine not ready).');
         }
 
