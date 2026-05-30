@@ -221,7 +221,7 @@ app.post('/api/orders', async (req, res) => {
 
         // Send instant packing notification in Telugu script to the shop worker
         if (sock && isWhatsappReady) {
-            const workerMobileNumber = "919849075576";
+            const workerMobileNumber = "919154699599";
             const workerChatId = `${workerMobileNumber}@s.whatsapp.net`;
 
             let workerTeluguMessage = `📋 *కొత్త ప్యాకింగ్ ఆర్డర్ వివరాలు (కొత్త ఆర్డర్ వచ్చింది)*\n`;
@@ -329,7 +329,7 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         await order.save();
 
         // Generate UPI deep link & base64 payment QR Code
-        const upiPaymentUri = `upi://pay?pa=8885208886@ybl&pn=Sai%20Bhavani%20Kirana%20Stores&am=${order.totalAmount}&cu=INR&tn=Order_${order._id}`;
+        const upiPaymentUri = `upi://pay?pa=9154699599@axl&pn=Sai%20Bhavani%20Kirana%20Stores&am=${order.totalAmount}&cu=INR&tn=Order_${order._id}`;
         const qrCodeImageBuffer = await QRCode.toBuffer(upiPaymentUri, {margin: 1, width: 130});
 
         // ============================================================
