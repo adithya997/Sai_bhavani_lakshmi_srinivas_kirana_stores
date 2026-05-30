@@ -328,7 +328,15 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
         await order.save();
 
         // Generate UPI deep link & base64 payment QR Code
-        const upiPaymentUri = `upi://pay?pa=9154699599@axl&pn=Sai%20Bhavani%20Kirana%20Stores&am=${order.totalAmount}&cu=INR&tn=Order_${order._id}`;
+        const params = new URLSearchParams({
+            pa: '9154699599@axl',
+            pn: 'Sai Bhavani Kirana Stores',
+            am: order.totalAmount.toString(),
+            cu: 'INR',
+            tn: 'KiranaOrder'
+        });
+
+        const upiPaymentUri = `upi://pay?${params.toString()}`;
         const qrCodeImageBuffer = await QRCode.toBuffer(upiPaymentUri, {margin: 1, width: 130});
 
         // ============================================================
