@@ -350,7 +350,7 @@ app.post('/api/admin/orders/:id/compile', async (req, res) => {
                             '📞 Final WhatsApp Number:',
                             customerFormattedChatId
                         );
-                        let customerAlertString = `🙏 *సాయి భవానీ కిరాణా స్టోర్స్ (బఠానీ షాప్) నుండి బిల్లు*\n`;
+                        let customerAlertString = `🙏 *Sai Bhavani Lakshmi Srinivasa Genral Stores (Battani Shop) (బఠానీ షాప్) నుండి బిల్లు*\n`;
                         customerAlertString += `--------------------------------------------------\n`;
                         customerAlertString += `👤 *కస్టమర్ పేరు:* ${order.customer.name}\n`;
                         customerAlertString += `Invoice Total: *₹${order.totalAmount}*\n\n`;
