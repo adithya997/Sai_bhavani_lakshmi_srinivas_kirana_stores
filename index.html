@@ -108,16 +108,16 @@
         const inputField = document.getElementById(`price_${orderId}_${index}`);
         const statusLabel = document.getElementById(`na_label_${orderId}_${index}`);
 
-        if (inputField.disabled && inputField.value === "-1") {
-            // Re-enable
-            inputField.disabled = false;
-            inputField.value = "";
+        if (inputField.disabled) return;
+
+        if (inputField.getAttribute('data-na') === 'true') {
+            inputField.setAttribute('data-na', 'false');
+            inputField.value = '';
             statusLabel.innerText = "Available / ఉంది";
             statusLabel.className = "text-[9px] font-bold text-emerald-600 block mt-0.5";
         } else {
-            // Mark as Not Available
-            inputField.disabled = true;
-            inputField.value = "-1";
+            inputField.setAttribute('data-na', 'true');
+            inputField.value = '-1';
             statusLabel.innerText = "Unavailable / లేదు";
             statusLabel.className = "text-[9px] font-bold text-rose-500 block mt-0.5";
         }
@@ -134,61 +134,63 @@
             const ordersArray = Array.isArray(orders) ? orders : (orders.orders || []);
 
             const pendingCount = ordersArray.filter(o => o.status === 'Pending').length;
-            const doneCount = ordersArray.filter(o => o.status === 'Done').length;
+            const completedCount = ordersArray.filter(o => o.status === 'Done').length;
 
             document.getElementById('pendingTally').innerText = `${pendingCount} Pending`;
-            document.getElementById('completedTally').innerText = `${doneCount} Processed`;
+            document.getElementById('completedTally').innerText = `${completedCount} Processed`;
 
             pendingGrid.innerHTML = '';
             processedGrid.innerHTML = '';
 
             if (ordersArray.length === 0) {
-                const emptyHTML = `<div class="col-span-full py-12 text-center text-slate-400 text-sm bg-white border border-dashed rounded-2xl">No records found.</div>`;
-                pendingGrid.innerHTML = emptyHTML; processedGrid.innerHTML = emptyHTML;
+                pendingGrid.innerHTML = `<p class="text-slate-400 text-xs italic p-1.5">No incoming items in queue.</p>`;
+                processedGrid.innerHTML = `<p class="text-slate-400 text-xs italic p-1.5">No processed archives ready.</p>`;
                 return;
             }
 
             ordersArray.forEach(order => {
                 const isDone = order.status === 'Done';
-                let itemsHtml = '';
+                const parsedDate = new Date(order.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
+                let itemsRowsHTML = '';
                 order.items.forEach((item, index) => {
-                    let helper = (item.unit==='gram'||item.unit==='gms'||item.unit==='ml'||item.unit==='mls') ? ' <span class="text-emerald-600 font-bold text-[9px]">(Per KG/Ltr)</span>' : '';
                     const isItemUnavailable = item.price === -1;
+                    let helper = '';
 
-                    itemsHtml += `
-                        <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-100 space-y-1.5">
-                            <div class="flex justify-between items-start">
-                                <div class="text-xs font-semibold text-slate-800 max-w-[65%] leading-tight">
-                                    📦 ${item.productName} <span class="bg-white px-1.5 py-0.5 rounded border font-bold text-[10px] text-slate-500 inline-block mt-0.5">${item.quantity} ${item.unit}</span>${helper}
-                                    ${item.itemComment ? `<div class="text-[10px] text-sky-700 italic font-medium mt-1">💬 Choice: ${item.itemComment}</div>` : ''}
-                                </div>
-                                <div class="w-24 text-right">
-                                    <div class="relative flex items-center">
-                                        <span class="absolute left-1.5 text-slate-400 text-[10px]">Rs.</span>
-                                        <input type="number" step="any" placeholder="${isItemUnavailable ? 'N/A' : '0.00'}"
-                                               id="price_${order._id}_${index}"
-                                               data-order-id="${order._id}" data-item-name="${item.productName}" data-qty="${item.quantity}" data-unit="${item.unit.toLowerCase().trim()}"
-                                               value="${isDone ? (isItemUnavailable ? '-1' : item.price) : ''}"
-                                               ${isDone || isItemUnavailable ? 'disabled' : `oninput="calculateLiveCardTotal('${order._id}')"`}
-                                               class="w-full pl-6 pr-1.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-right text-slate-800 disabled:bg-slate-100">
-                                    </div>
-                                    ${!isDone ? `
-                                        <span id="na_label_${order._id}_${index}" class="text-[9px] font-bold text-emerald-600 block mt-0.5">Available / ఉంది</span>
-                                    ` : `
-                                        <span class="text-[9px] font-bold ${isItemUnavailable ? 'text-rose-500' : 'text-emerald-600'} block mt-0.5">${isItemUnavailable ? 'Unavailable / లేదు' : 'Available / ఉంది'}</span>
-                                    `}
-                                </div>
-                            </div>
-                            ${!isDone ? `
-                                <div class="text-right">
-                                    <button type="button" onclick="toggleProductAvailability('${order._id}', '${index}')" class="text-[10px] bg-white border border-slate-200 text-slate-600 px-2 py-0.5 rounded hover:bg-slate-100 font-medium">
-                                        🚫 Toggle Unavailable / వస్తువు లేదు
-                                    </button>
-                                </div>
-                            ` : ''}
+                    itemsRowsHTML += `
+                    <div class="border-b border-slate-100 pb-2.5 last:border-0 last:pb-0 flex justify-between items-start gap-2">
+                        <div class="flex-1 min-w-0">
+                            <h5 class="text-xs font-bold text-slate-800 truncate">${item.productName}</h5>
+                            <span class="text-[10px] font-semibold bg-slate-100 border border-slate-200 text-slate-600 px-1.5 py-0.2 rounded inline-block mt-0.5">${item.quantity} ${item.unit}</span>${helper}
+                            ${item.itemComment ? `<div class="text-[10px] text-sky-700 italic font-medium mt-1">💬 Choice: ${item.itemComment}</div>` : ''}
+                            ${item.ownerComment ? `<div class="text-[10px] text-amber-700 font-medium mt-1">1️⃣ Note: ${item.ownerComment}</div>` : ''}
                         </div>
-                    `;
+                        <div class="w-24 text-right">
+                            <div class="relative flex items-center">
+                                <span class="absolute left-1.5 text-slate-400 text-[10px]">Rs.</span>
+                                <input type="number" step="any" placeholder="${isItemUnavailable ? 'N/A' : '0.00'}" id="price_${order._id}_${index}" data-order-id="${order._id}" data-item-name="${item.productName}" data-qty="${item.quantity}" data-unit="${item.unit.toLowerCase().trim()}" value="${isDone ? (isItemUnavailable ? '-1' : item.price) : ''}" ${isDone || isItemUnavailable ? 'disabled' : `oninput="calculateLiveCardTotal('${order._id}')"`} class="w-full pl-6 pr-1.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-right text-slate-800 disabled:bg-slate-100">
+                            </div>
+                            <textarea
+                                id="comment_${order._id}_${index}"
+                                data-order-id="${order._id}"
+                                data-item-name="${item.productName}"
+                                placeholder="Optional note"
+                                rows="2"
+                                ${isDone ? 'disabled' : ''}
+                                class="w-full mt-2 border border-slate-200 rounded-lg p-2 text-xs">${isDone ? (item.ownerComment || '') : ''}</textarea>
+                            ${!isDone ? `
+                                <span id="na_label_${order._id}_${index}" class="text-[9px] font-bold text-emerald-600 block mt-0.5">Available / ఉంది</span>
+                            ` : `
+                                <span class="text-[9px] font-bold ${isItemUnavailable ? 'text-rose-500' : 'text-emerald-600'} block mt-0.5">${isItemUnavailable ? 'Unavailable / లేదు' : 'Available / ఉంది'}</span>
+                            `}
+                        </div>
+                    </div>
+                    ${!isDone ? `
+                    <div class="text-right">
+                        <button type="button" onclick="toggleProductAvailability('${order._id}', '${index}')" class="text-[10px] bg-white border border-slate-200 text-slate-500 font-medium px-2 py-0.5 rounded hover:bg-slate-50 mt-1">
+                            🚫 Toggle Not Available
+                        </button>
+                    </div>` : ''}`;
                 });
 
                 let payStatusBadge = '';
@@ -197,104 +199,112 @@
                 } else if (order.paymentStatus === 'Paid Cash') {
                     payStatusBadge = '<span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full">🟢 Paid Cash</span>';
                 } else {
-                    payStatusBadge = '<span class="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-2 py-0.5 rounded-full">🔴 Unpaid / బకాయి</span>';
+                    payStatusBadge = '<span class="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-2 py-0.5 rounded-full">🔴 Unpaid</span>';
                 }
 
                 const cardHTML = `
-                    <div class="bg-white rounded-2xl border border-slate-200 p-4 md:p-5 flex flex-col gap-3.5 relative shadow-xs hover:shadow-sm" id="card_${order._id}">
-                        <button onclick="deleteOrderRecord('${order._id}')" class="absolute top-4 right-4 text-slate-300 hover:text-red-500 text-sm">🗑️</button>
-                        <div>
-                            <div class="flex gap-1.5 items-center flex-wrap">
-                                <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${isDone ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}">${isDone ? 'Processed / పూర్తి అయినవి' : 'Pending / పెండింగ్'}</span>
-                                ${payStatusBadge}
-                            </div>
-                            <h3 class="text-sm font-bold text-slate-900 mt-2">${order.customer.name}</h3>
-                            <p class="text-xs text-slate-500 font-semibold mt-0.5">📞 Phone: ${order.customer.phone}</p>
+                <div class="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col gap-3.5 relative shadow-xs hover:shadow-sm transition-all" id="card_${order._id}">
+                    <button onclick="deleteOrderRecord('${order._id}')" class="absolute top-4 right-4 text-slate-300 hover:text-red-500 transition-colors text-xs">🗑️</button>
+                    <div>
+                        <div class="flex gap-1 items-center flex-wrap">
+                            <span class="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${isDone ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}">${order.status}</span>
+                            ${payStatusBadge}
                         </div>
-                        <div class="space-y-2 flex-1">${itemsHtml}</div>
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 flex justify-between items-center">
-                            <span class="text-xs font-bold text-slate-600">Total Bill / మొత్తం బిల్లు:</span>
-                            <span class="text-sm font-black text-slate-900" id="totalLabel_${order._id}">Rs. ${order.totalAmount.toFixed(2)}</span>
-                        </div>
-
-                        ${isDone ? `
-                            <div class="flex flex-col gap-1.5 border-t border-slate-100 pt-3">
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Update Payment / పేమెంట్ మార్చండి:</span>
-                                <div class="grid grid-cols-3 gap-1">
-                                    <button onclick="updatePaymentState('${order._id}', 'Unpaid')" class="py-1.5 text-[10px] font-bold rounded-lg border transition-all ${order.paymentStatus === 'Unpaid' ? 'bg-red-500 text-white border-red-500' : 'bg-slate-50 text-slate-600 border-slate-200'}">🔴 Unpaid</button>
-                                    <button onclick="updatePaymentState('${order._id}', 'Paid Online')" class="py-1.5 text-[10px] font-bold rounded-lg border transition-all ${order.paymentStatus === 'Paid Online' ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-600 border-slate-200'}">🔵 Online</button>
-                                    <button onclick="updatePaymentState('${order._id}', 'Paid Cash')" class="py-1.5 text-[10px] font-bold rounded-lg border transition-all ${order.paymentStatus === 'Paid Cash' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 text-slate-600 border-slate-200'}">🟢 Cash</button>
-                                </div>
-                            </div>
-                        ` : `
-                            <button onclick="commitOrderPricing('${order._id}')" id="btn_${order._id}" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-xl text-xs tracking-wider uppercase transition-all">Compile & Send Invoice / బిల్లు పంపండి</button>
-                        `}
+                        <h4 class="font-bold text-slate-900 mt-1.5 text-xs sm:text-sm truncate">${order.customer.name}</h4>
+                        <p class="text-[11px] text-slate-500 font-medium">${order.customer.phone}</p>
+                        <p class="text-[9px] text-slate-400 font-medium">${parsedDate}</p>
                     </div>
-                `;
 
-                if (isDone) { processedGrid.insertAdjacentHTML('beforeend', cardHTML); }
-                else { pendingGrid.insertAdjacentHTML('beforeend', cardHTML); }
+                    <div class="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col gap-3 flex-1">
+                        ${itemsRowsHTML}
+                    </div>
+
+                    <div class="flex justify-between items-center border-t border-slate-100 pt-2.5">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Matrix</span>
+                        <span class="text-xs sm:text-sm font-extrabold text-slate-900" id="totalLabel_${order._id}">Rs. ${(order.totalAmount || 0).toFixed(2)}</span>
+                    </div>
+
+                    ${isDone ? `
+                    <div class="mt-0.5 border-t border-slate-100 pt-2.5 flex flex-col gap-1.5">
+                        <div class="grid grid-cols-3 gap-1 bg-slate-100 p-0.5 rounded-lg border">
+                            <button onclick="updatePaymentState('${order._id}', 'Unpaid')" class="py-1 text-[9px] font-bold rounded-md border transition-all ${order.paymentStatus === 'Unpaid' ? 'bg-rose-600 text-white border-rose-600' : 'bg-slate-50 text-slate-600 border-slate-200'}">🔴 Unpaid</button>
+                            <button onclick="updatePaymentState('${order._id}', 'Paid Online')" class="py-1 text-[9px] font-bold rounded-md border transition-all ${order.paymentStatus === 'Paid Online' ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-600 border-slate-200'}">🔵 Online</button>
+                            <button onclick="updatePaymentState('${order._id}', 'Paid Cash')" class="py-1 text-[9px] font-bold rounded-md border transition-all ${order.paymentStatus === 'Paid Cash' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 text-slate-600 border-slate-200'}">🟢 Cash</button>
+                        </div>
+                    </div>
+                    ` : `
+                    <button onclick="commitOrderPricing('${order._id}')" id="btn_${order._id}" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2 rounded-xl text-[11px] tracking-wider uppercase transition-all">Compile & Send Invoice</button>
+                    `}
+                </div>`;
+
+                if (order.status === 'Pending') {
+                    pendingGrid.insertAdjacentHTML('beforeend', cardHTML);
+                } else {
+                    processedGrid.insertAdjacentHTML('beforeend', cardHTML);
+                }
             });
-
-            if (pendingGrid.children.length === 0) {
-                pendingGrid.innerHTML = `<div class="col-span-full py-8 text-center text-slate-400 text-xs bg-slate-100/50 rounded-xl border border-dashed">🎉 No orders currently pending pricing setup!</div>`;
-            }
-            if (processedGrid.children.length === 0) {
-                processedGrid.innerHTML = `<div class="col-span-full py-8 text-center text-slate-400 text-xs bg-slate-100/50 rounded-xl border border-dashed">Processed history log currently empty.</div>`;
-            }
 
             applyDashboardViewFilter(activeFilterMode);
 
-        } catch(e) {
-            pendingGrid.innerHTML = `<div class="col-span-full p-4 bg-red-50 text-red-600 text-center rounded-xl font-bold text-xs border border-red-100">API Gateway Error: ${e.message}</div>`;
+        } catch (error) {
+            console.error("Dashboard error summary matrix mapping failure:", error);
         }
     }
 
     function calculateLiveCardTotal(orderId) {
         let total = 0;
         document.querySelectorAll(`input[data-order-id="${orderId}"]`).forEach(input => {
-            const val = parseFloat(input.value);
-            if (isNaN(val) || val === -1) return; // Skip calculation for unavailable items
-
-            const rate = val;
-            const qty = parseFloat(input.getAttribute('data-qty')) || 0;
-            const unit = input.getAttribute('data-unit');
-            if (unit === 'gram' || unit === 'gms' || unit === 'ml' || unit === 'mls') total += (qty / 1000) * rate;
-            else total += qty * rate;
+            total += Number(input.value || 0);
         });
         document.getElementById(`totalLabel_${orderId}`).innerText = `Rs. ${total.toFixed(2)}`;
     }
 
     async function commitOrderPricing(orderId) {
         const itemPrices = {};
+        const itemComments = {};
         let missing = false;
 
         document.querySelectorAll(`input[data-order-id="${orderId}"]`).forEach(input => {
-            if (!input.value.trim()) missing = true;
-            else itemPrices[input.getAttribute('data-item-name')] = parseFloat(input.value);
+            const prodName = input.getAttribute('data-item-name');
+            const rateStr = input.value.trim();
+
+            if (!rateStr) {
+                missing = true;
+                input.classList.add('border-rose-400');
+            } else {
+                input.classList.remove('border-rose-400');
+                itemPrices[prodName] = rateStr;
+            }
         });
 
-        if (missing) { alert("Please input prices or toggle unavailable for all products listed!"); return; }
+        document.querySelectorAll(`textarea[data-order-id="${orderId}"]`).forEach(commentBox => {
+            itemComments[commentBox.getAttribute('data-item-name')] = commentBox.value.trim();
+        });
+
+        if (missing) {
+            alert("Please compile all item rows perfectly configuration statuses.");
+            return;
+        }
 
         const btn = document.getElementById(`btn_${orderId}`);
-        btn.disabled = true; btn.innerText = "Transmitting Invoice Summary...";
+        btn.disabled = true;
+        btn.innerText = "Processing...";
 
         try {
-            const res = await fetch(`${CORE_API}/api/admin/orders/${orderId}/finalize`, {
-                method: 'PUT',
+            const res = await fetch(`${CORE_API}/api/admin/orders/${orderId}/compile`, {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ itemPrices })
+                body: JSON.stringify({ itemPrices, itemComments })
             });
             const data = await res.json();
-
             if (data.success) {
-                alert("Invoice dispatched over WhatsApp successfully!");
+                alert("Invoice sent successfully!");
                 fetchAllLiveOrders();
             } else {
                 alert("Compilation failure: " + (data.error || data.message));
                 btn.disabled = false; btn.innerText = "Compile & Send Invoice";
             }
-        } catch(e) {
+        } catch (e) {
             alert("Error connecting to server: " + e.message);
             btn.disabled = false; btn.innerText = "Compile & Send Invoice";
         }
@@ -309,7 +319,7 @@
             });
             const data = await res.json();
             if (data.success) fetchAllLiveOrders();
-        } catch(e) { alert("Failed to change payment status."); }
+        } catch (e) { alert("Failed to change payment status."); }
     }
 
     async function deleteOrderRecord(orderId) {
