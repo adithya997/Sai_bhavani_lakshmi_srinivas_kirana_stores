@@ -238,7 +238,7 @@ app.post('/api/orders', async (req, res) => {
                     );
 
                 workerTeluguMessage +=
-                    `${idx + 1}. 📦 *${teluguProduct}* - ${item.quantity} ${item.unit}\n`;
+                    `${idx + 1}. 📦 *${item.productName} (${teluguProduct})* - ${item.quantity} ${item.unit}\n`;
                 if(item.itemComment){
 
                     const teluguBrand =
@@ -314,8 +314,7 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
                 if (['gram', 'gms', 'ml', 'mls'].includes(standardUnit)) {
                     subtotal = (item.quantity / 1000) * configuredRate;
                 } else {
-                    subtotal = item.quantity * configuredRate;
-                }
+                    subtotal = configuredRate;                }
                 grandSum += subtotal;
                 totalItemsCount++;
             }
@@ -445,10 +444,11 @@ app.put('/api/admin/orders/:id/finalize', async (req, res) => {
 
         // Clickable Button built directly into the PDF
         doc.rect(textX, currentY + 102, 200, 26).fill('#059669');
-        doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(9.5).text('👉 CLICK TO PAY ONLINE 👈', textX + 24, currentY + 110, {
-            link: upiPaymentUri,
-            underline: false
-        });
+        doc.fillColor('blue')
+            .text('Pay Now', {
+                link: upiPaymentUri,
+                underline: true
+            });
 
         // Footer block notice
         doc.fillColor('#94a3b8').font('Helvetica').fontSize(8).text('Thank you for shopping with us!', 40, 765, {align: 'center'});
