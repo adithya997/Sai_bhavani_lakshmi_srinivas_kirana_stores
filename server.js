@@ -354,14 +354,26 @@ app.post('/api/admin/orders/:id/compile', async (req, res) => {
                         customerAlertString += `--------------------------------------------------\n`;
                         customerAlertString += `👤 *కస్టమర్ పేరు:* ${order.customer.name}\n`;
                         customerAlertString += `Invoice Total: *₹${order.totalAmount}*\n\n`;
-                        customerAlertString += `💳 *Payment Options*\n\n`;
-                        customerAlertString += `*UPI ID:*\n9154699599@axl\n\n`;
-                        customerAlertString += `*PhonePe Number:*\n9154699599\n\n`;
-                        customerAlertString += `*Google Pay Number:*\n9154699599\n\n`;
-                        customerAlertString += `*Paytm Number:*\n9154699599\n\n`;
-                        customerAlertString += `Invoice PDF attached.\n`;
-                        customerAlertString += `--------------------------------------------------\n`;
-                        customerAlertString += `మీ ఆర్డర్ సిద్ధంగా ఉంది! దయచేసి పైన పేర్కొన్న నంబర్‌కు పేమెంట్ చేసి, స్క్రీన్‌షాట్ పంపగలరు. ధన్యవాదాలు!`;
+                        customerAlertString += `💳 *PAYMENT OPTIONS | చెల్లింపు విధానాలు*\n\n`;
+
+                        customerAlertString += `📱 *PhonePe Number | ఫోన్‌పే నంబర్:*\n`;
+                        customerAlertString += `9154699599\n\n`;
+
+                        customerAlertString += `🏦 *UPI ID | యూపీఐ ఐడి:*\n`;
+                        customerAlertString += `9154699599@axl\n\n`;
+
+                        customerAlertString += `🔗 *Pay Using UPI Link | యూపీఐ లింక్ ద్వారా చెల్లించండి:*\n`;
+                        customerAlertString += `${upiPaymentUri}\n\n`;
+
+                        customerAlertString += `⚠️ *If the payment link does not open, please use the PhonePe number or UPI ID mentioned above.*\n`;
+                        customerAlertString += `⚠️ *పేమెంట్ లింక్ పనిచేయకపోతే, పై ఫోన్‌పే నంబర్ లేదా యూపీఐ ఐడిని ఉపయోగించి చెల్లించండి.*\n\n`;
+
+                        customerAlertString += `🏪 *You may also pay directly at our shop during pickup/delivery.*\n`;
+                        customerAlertString += `🏪 *వస్తువులు తీసుకునే సమయంలో లేదా డెలివరీ సమయంలో నేరుగా షాపులో కూడా చెల్లించవచ్చు.*\n\n`;
+
+                        customerAlertString += `🙏 *After payment, please keep the transaction reference or screenshot for verification if required.*\n`;
+                        customerAlertString += `🙏 *చెల్లింపు చేసిన తరువాత అవసరమైతే ధృవీకరణ కోసం ట్రాన్సాక్షన్ రిఫరెన్స్ లేదా స్క్రీన్‌షాట్‌ను ఉంచుకోండి.*\n\n`;
+
                         console.log(
                             "📱 Sending invoice to:",
                             customerFormattedChatId
