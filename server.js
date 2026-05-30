@@ -15,14 +15,9 @@ const {
 
 const Order = require('./src/models/Order');
 require('dotenv').config();
-const productDictionary =
-    require('./productDictionary');
-
-const brandDictionary =
-    require('./brandDictionary');
-
-const transliterateToTelugu =
-    require('./transliterator');
+const productDictionary = require('./productDictionary');
+const brandDictionary = require('./brandDictionary');
+const transliterateToTelugu = require('./transliterator');
 
 const app = express();
 app.use(cors());
@@ -220,7 +215,6 @@ app.post('/api/admin/orders/:id/compile', async (req, res) => {
 
         let grandSum = 0;
         let totalItemsCount = 0;
-        const processedItems = [];
 
         order.items.forEach(item => {
             item.ownerComment = itemComments[item.productName] || "";
@@ -333,38 +327,58 @@ app.post('/api/admin/orders/:id/compile', async (req, res) => {
 
         doc.end();
 
-        writeStream.on('finish', async () => {
-            if (sock && isWhatsappReady) {
-                const customerFormattedChatId = `${order.customer.phone.trim()}@s.whatsapp.net`;
+        // Promise to structure flow cleanly and guarantee execution order
+        await new Promise((resolve, reject) => {
+            writeStream.on('finish', async () => {
+                try {
+                    if (sock && isWhatsappReady) {
+                        const customerFormattedChatId = `${order.customer.phone.trim()}@s.whatsapp.net`;
 
-                let customerAlertString = `🙏 *సాయి భవానీ కిరాణా స్టోర్స్ (బఠానీ షాప్) నుండి బిల్లు*\n`;
-                customerAlertString += `--------------------------------------------------\n`;
-                customerAlertString += `👤 *కస్టమర్ పేరు:* ${order.customer.name}\n`;
-                customerAlertString += `Invoice Total: *₹${order.totalAmount}*\n\n`;
-                customerAlertString += `💳 *Payment Options*\n\n`;
-                customerAlertString += `*UPI ID:*\n9154699599@axl\n\n`;
-                customerAlertString += `*PhonePe Number:*\n9154699599\n\n`;
-                customerAlertString += `*Google Pay Number:*\n9154699599\n\n`;
-                customerAlertString += `*Paytm Number:*\n9154699599\n\n`;
-                customerAlertString += `Invoice PDF attached.\n`;
-                customerAlertString += `--------------------------------------------------\n`;
-                customerAlertString += `మీ ఆర్డర్ సిద్ధంగా ఉంది! దయచేసి పైన పేర్కొన్న నంబర్‌కు పేమెంట్ చేసి, స్క్రీన్‌షాట్ పంపగలరు. ధన్యవాదాలు!`;
+                        let customerAlertString = `🙏 *సాయి భవానీ కిరాణా స్టోర్స్ (బఠానీ షాప్) నుండి బిల్లు*\n`;
+                        customerAlertString += `--------------------------------------------------\n`;
+                        customerAlertString += `👤 *కస్టమర్ పేరు:* ${order.customer.name}\n`;
+                        customerAlertString += `Invoice Total: *₹${order.totalAmount}*\n\n`;
+                        customerAlertString += `💳 *Payment Options*\n\n`;
+                        customerAlertString += `*UPI ID:*\n9154699599@axl\n\n`;
+                        customerAlertString += `*PhonePe Number:*\n9154699599\n\n`;
+                        customerAlertString += `*Google Pay Number:*\n9154699599\n\n`;
+                        customerAlertString += `*Paytm Number:*\n9154699599\n\n`;
+                        customerAlertString += `Invoice PDF attached.\n`;
+                        customerAlertString += `--------------------------------------------------\n`;
+                        customerAlertString += `మీ ఆర్డర్ సిద్ధంగా ఉంది! దయచేసి పైన పేర్కొన్న నంబర్‌కు పేమెంట్ చేసి, స్క్రీన్‌షాట్ పంపగలరు. ధన్యవాదాలు!`;
 
-                await sock.sendMessage(customerFormattedChatId, { text: customerAlertString });
+                        await sock.sendMessage(customerFormattedChatId, { text: customerAlertString });
 
-                await sock.sendMessage(customerFormattedChatId, {
-                    document: fs.readFileSync(localTargetPdfPath),
-                    mimetype: 'application/pdf',
-                    fileName: `Sai_Bhavani_Invoice_${order._id.toString().substring(0,6).toUpperCase()}.pdf`
-                });
+                        await sock.sendMessage(customerFormattedChatId, {
+                            document: fs.readFileSync(localTargetPdfPath),
+                            mimetype: 'application/pdf',
+                            fileName: `Sai_Bhavani_Invoice_${order._id.toString().substring(0,6).toUpperCase()}.pdf`
+                        });
+                    }
+                    resolve();
+                } catch (whatsappErr) {
+                    // Log WhatsApp dispatch failures safely without blocking API response
+                    console.error("⚠️ WhatsApp Message transmission error:", whatsappErr);
+                    resolve();
+                } finally {
+                    try {
+                        if (fs.existsSync(localTargetPdfPath)) {
+                            fs.unlinkSync(localTargetPdfPath);
+                        }
+                    } catch(err){
+                        console.error("⚠️ Local file cleanup error:", err);
+                    }
+                }
+            });
 
-                try { fs.unlinkSync(localTargetPdfPath); } catch(err){}
-            }
+            writeStream.on('error', (streamErr) => {
+                reject(streamErr);
+            });
         });
 
         return res.json({success: true, order});
     } catch (err) {
-        console.error(err);
+        console.error("❌ Order compilation exception encountered:", err);
         return res.status(500).json({success: false, error: err.message});
     }
 });
