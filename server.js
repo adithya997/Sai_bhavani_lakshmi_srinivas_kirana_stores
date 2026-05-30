@@ -270,7 +270,7 @@ app.post('/api/admin/orders/:id/compile', async (req, res) => {
         doc.text('SL.', 48, 212, {width: 25});
         doc.text('PRODUCT SPECIFICATION', 85, 212, {width: 170});
         doc.text('QTY / UNIT', 265, 212, {width: 70});
-        doc.text('PRICE RATE', 340, 212, {width: 95, align: 'right'});
+        doc.text('AMOUNT', 340, 212, {width: 95, align: 'right'});
         doc.text('SUBTOTAL', 445, 212, {width: 105, align: 'right'});
 
         let currentY = 227;
@@ -314,8 +314,11 @@ app.post('/api/admin/orders/:id/compile', async (req, res) => {
         doc.text(`Rs. ${order.totalAmount.toFixed(2)}`, 440, currentY + 35, {align: 'right', width: 105});
 
         if (currentY < 650) {
-            doc.strokeColor('#cbd5e1').lineWidth(1).dashed(4, {space: 2}).moveTo(40, currentY + 80).lineTo(555, currentY + 80).stroke();
-
+            doc.strokeColor('#cbd5e1')
+                .lineWidth(1)
+                .moveTo(40, currentY + 80)
+                .lineTo(555, currentY + 80)
+                .stroke();
             let paymentSectionY = currentY + 95;
             doc.fillColor('#1e293b').font('Helvetica-Bold').fontSize(11).text('SCAN QR CODE TO PAY IMMEDIATELY via UPI:', 40, paymentSectionY);
             doc.image(qrCodeImageBuffer, 40, paymentSectionY + 15);
