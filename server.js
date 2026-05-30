@@ -335,8 +335,21 @@ app.post('/api/admin/orders/:id/compile', async (req, res) => {
             writeStream.on('finish', async () => {
                 try {
                     if (sock && isWhatsappReady) {
-                        const customerFormattedChatId = `${order.customer.phone.trim()}@s.whatsapp.net`;
+                        let phone =
+                            order.customer.phone
+                                .replace(/\D/g, '');
 
+                        if(phone.length === 10){
+                            phone = '91' + phone;
+                        }
+
+                        const customerFormattedChatId =
+                            `${phone}@s.whatsapp.net`;
+
+                        console.log(
+                            '📞 Final WhatsApp Number:',
+                            customerFormattedChatId
+                        );
                         let customerAlertString = `🙏 *సాయి భవానీ కిరాణా స్టోర్స్ (బఠానీ షాప్) నుండి బిల్లు*\n`;
                         customerAlertString += `--------------------------------------------------\n`;
                         customerAlertString += `👤 *కస్టమర్ పేరు:* ${order.customer.name}\n`;
@@ -349,19 +362,54 @@ app.post('/api/admin/orders/:id/compile', async (req, res) => {
                         customerAlertString += `Invoice PDF attached.\n`;
                         customerAlertString += `--------------------------------------------------\n`;
                         customerAlertString += `మీ ఆర్డర్ సిద్ధంగా ఉంది! దయచేసి పైన పేర్కొన్న నంబర్‌కు పేమెంట్ చేసి, స్క్రీన్‌షాట్ పంపగలరు. ధన్యవాదాలు!`;
+                        console.log(
+                            "📱 Sending invoice to:",
+                            customerFormattedChatId
+                        );
+
+                        console.log(
+                            "📄 PDF path:",
+                            localTargetPdfPath
+                        );
+
+                        console.log(
+                            "💰 Amount:",
+                            order.totalAmount
+                        );
 
                         await sock.sendMessage(customerFormattedChatId, { text: customerAlertString });
+
+                        console.log(
+                            "✅ Customer text message sent"
+                        );
 
                         await sock.sendMessage(customerFormattedChatId, {
                             document: fs.readFileSync(localTargetPdfPath),
                             mimetype: 'application/pdf',
                             fileName: `Sai_Bhavani_Invoice_${order._id.toString().substring(0,6).toUpperCase()}.pdf`
                         });
+                        console.log(
+                            "✅ Customer PDF sent"
+                        );
                     }
                     resolve();
                 } catch (whatsappErr) {
                     // Log WhatsApp dispatch failures safely without blocking API response
-                    console.error("⚠️ WhatsApp Message transmission error:", whatsappErr);
+                    console.error(
+                        "❌ WhatsApp Send Failure"
+                    );
+
+                    console.error(
+                        whatsappErr
+                    );
+
+                    console.error(
+                        whatsappErr?.message
+                    );
+
+                    console.error(
+                        whatsappErr?.stack
+                    );
                     resolve();
                 } finally {
                     try {
